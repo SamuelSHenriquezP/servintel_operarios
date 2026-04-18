@@ -1,0 +1,26 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "gestion-servi-intel-sas",
+          "appId": "1:948711390857:android:9edd53f1069fcc94c39058",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "gestion-servi-intel-sas",
+          "configurations": {
+            "android": "1:948711390857:android:9edd53f1069fcc94c39058",
+            "ios": "1:948711390857:ios:9c7f3f50575c91b8c39058"
+          }
+        }
+      }
+    }
+  }
+}

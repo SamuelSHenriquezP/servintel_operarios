@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "948711390857",
+    "project_id": "gestion-servi-intel-sas",
+    "storage_bucket": "gestion-servi-intel-sas.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948711390857:android:9edd53f1069fcc94c39058",
+        "android_client_info": {
+          "package_name": "com.example.servintel_operarios"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "948711390857-1ko68na655selubqhpmfmmvb28p08hh8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASZb2Pt32Qnu6MVxt8OeZe7_aSHpzUMi8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "948711390857-1ko68na655selubqhpmfmmvb28p08hh8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948711390857:android:eff36d14ce45b53ac39058",
+        "android_client_info": {
+          "package_name": "com.serviintel.gestion"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "948711390857-1ko68na655selubqhpmfmmvb28p08hh8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASZb2Pt32Qnu6MVxt8OeZe7_aSHpzUMi8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "948711390857-1ko68na655selubqhpmfmmvb28p08hh8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
