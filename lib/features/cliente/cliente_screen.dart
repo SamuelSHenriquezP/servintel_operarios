@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants.dart';
 import '../../shared/widgets/common_widgets.dart';
+import 'visto_bueno_screen.dart';
+import 'mapa_cliente_screen.dart';
 
 class ClienteScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -28,33 +30,23 @@ class _ClienteScreenState extends State<ClienteScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    setState(() => _isSending = true);
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) {
-        throw Exception('Sin autenticación');
-      }
+    final categoria = _categoriaSel!;
+    final desc = _descCtrl.text.trim();
 
-      await FirebaseFirestore.instance.collection('trabajos').add({
-        'clienteId': uid,
-        'clienteNombre': widget.userData['nombre'] ?? 'Cliente',
-        'categoria': _categoriaSel,
-        'descripcion': _descCtrl.text.trim(),
-        'estado': 'solicitado',
-        'creadoEn': FieldValue.serverTimestamp(),
-        'operarioId': null,
-        'operarioNombre': null,
-      });
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapaClienteScreen(
+          userData: widget.userData,
+          categoria: categoria,
+          descripcion: desc,
+        ),
+      ),
+    );
 
+    if (result == true) {
       _descCtrl.clear();
       setState(() => _categoriaSel = null);
-      if (!mounted) return;
-      _showSnackbar('🚀 ¡Solicitud enviada al despacho!', Colors.green);
-    } catch (e) {
-      if (!mounted) return;
-      _showSnackbar('Error al enviar: $e', Colors.red);
-    } finally {
-      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -407,6 +399,49 @@ class _ClienteScreenState extends State<ClienteScreen> {
                                     backgroundColor: cAmarillo,
                                   ),
                                   onPressed: () => _calificarServicio(job.id),
+                                ),
+                              ),
+                            ],
+
+                            if (estado == 'revision_cliente') ...[
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.assignment, color: Colors.white),
+                                  label: const Text(
+                                    'VER REPORTE TÉCNICO',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                  style: ElevatedButton.styleFrom(backgroundColor: cFucsia),
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => VistoBuenoScreen(data: data, jobId: job.id)),
+                                  ),
+                                ),
+                              ),
+                            ],
+
+                            if (!yaEvaluado && data['pinCode'] != null && estado != 'revision_cliente' && estado != 'reporte_aprobado') ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Text('CÓDIGO DE VERIFICACIÓN (PIN)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      data['pinCode'],
+                                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 4, color: Colors.blue),
+                                    ),
+                                    const Text('Entréguelo al técnico al llegar', style: TextStyle(fontSize: 11, color: Colors.blueGrey)),
+                                  ],
                                 ),
                               ),
                             ],

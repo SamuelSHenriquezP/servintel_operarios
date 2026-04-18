@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants.dart';
 import '../../shared/widgets/common_widgets.dart';
 import 'trabajos_repository.dart';
+import 'reporte_tecnico_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 
 // ======================================================================
 // PANTALLA OPERARIO TÉCNICO (OPTIMIZADA)
@@ -156,6 +159,15 @@ class _OperarioScreenState extends State<OperarioScreen> {
         return _TarjetaOperario(
           job: job,
           onActualizarEstado: (nuevo) => _actualizarEstado(context, job.id, nuevo),
+          onFinalizar: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ReporteTecnicoScreen(
+                userData: widget.userData,
+                jobId: job.id,
+              ),
+            ),
+          ),
         );
       },
     );
@@ -178,6 +190,15 @@ class _OperarioScreenState extends State<OperarioScreen> {
                 ...docs.map((job) => _TarjetaOperario(
                       job: job,
                       onActualizarEstado: (nuevo) => _actualizarEstado(context, job.id, nuevo),
+                      onFinalizar: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ReporteTecnicoScreen(
+                            userData: widget.userData,
+                            jobId: job.id,
+                          ),
+                        ),
+                      ),
                     )),
               ],
             );
@@ -197,6 +218,7 @@ class _OperarioScreenState extends State<OperarioScreen> {
                 ...docs.map((job) => _TarjetaOperario(
                       job: job,
                       onActualizarEstado: (_) {},
+                      onFinalizar: () {},
                     )),
               ],
             );
@@ -210,8 +232,9 @@ class _OperarioScreenState extends State<OperarioScreen> {
 class _TarjetaOperario extends StatelessWidget {
   final QueryDocumentSnapshot job;
   final void Function(String nuevoEstado) onActualizarEstado;
+  final VoidCallback onFinalizar;
 
-  const _TarjetaOperario({required this.job, required this.onActualizarEstado});
+  const _TarjetaOperario({required this.job, required this.onActualizarEstado, required this.onFinalizar});
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +322,12 @@ class _TarjetaOperario extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 15),
-              _BotonesEstado(estado: estado, onActualizar: onActualizarEstado),
+              _BotonesEstado(
+                data: data,
+                jobId: job.id,
+                onActualizar: onActualizarEstado,
+                onFinalizar: onFinalizar,
+              ),
             ],
           ),
         ),
@@ -308,19 +336,129 @@ class _TarjetaOperario extends StatelessWidget {
   }
 }
 
-class _BotonesEstado extends StatelessWidget {
-  final String estado;
+class _BotonesEstado extends StatefulWidget {
+  final Map<String, dynamic> data;
+  final String jobId;
   final void Function(String) onActualizar;
-  const _BotonesEstado({required this.estado, required this.onActualizar});
+  final VoidCallback onFinalizar;
+
+  const _BotonesEstado({
+    required this.data,
+    required this.jobId,
+    required this.onActualizar,
+    required this.onFinalizar,
+  });
+
+  @override
+  State<_BotonesEstado> createState() => _BotonesEstadoState();
+}
+
+class _BotonesEstadoState extends State<_BotonesEstado> {
+  bool _isLoading = false;
+
+  void _iniciarRuta() async {
+    final lat = widget.data['lat'];
+    final lng = widget.data['lng'];
+    if (lat != null && lng != null) {
+      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    }
+    widget.onActualizar('en_camino');
+  }
+
+  Future<void> _confirmarLlegada() async {
+    setState(() => _isLoading = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw Exception('GPS desactivado');
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) throw Exception('Permiso GPS denegado');
+      }
+
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      
+      final latDest = widget.data['lat'];
+      final lngDest = widget.data['lng'];
+      
+      if (latDest != null && lngDest != null) {
+        double distance = Geolocator.distanceBetween(
+          position.latitude, position.longitude,
+          latDest, lngDest,
+        );
+        
+        if (distance > 50) {
+          throw Exception('Estás a ${distance.toStringAsFixed(0)}m del destino. Debes estar a menos de 50 metros para confirmar la llegada.');
+        }
+      }
+
+      if (!mounted) return;
+      _solicitarPin();
+
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _solicitarPin() {
+    final pinCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmar Llegada (Código PIN)', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Pídele al cliente el número PIN de 4 dígitos para confirmar tu llegada.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            const SizedBox(height: 15),
+            TextField(
+              controller: pinCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 24, letterSpacing: 10, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(border: OutlineInputBorder(), counterText: ''),
+            )
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar', style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: cFucsia),
+            onPressed: () {
+              if (pinCtrl.text == widget.data['pinCode']) {
+                Navigator.pop(ctx);
+                widget.onActualizar('en_sitio');
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Llegada confirmada exitosamente.'), backgroundColor: Colors.green));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN incorrecto.'), backgroundColor: Colors.red));
+              }
+            },
+            child: const Text('VERIFICAR PIN'),
+          )
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final estado = widget.data['estado'] ?? '';
+
     if (estado == 'asignado') {
       return _boton(
         Icons.directions_car,
-        'VOY EN CAMINO',
+        'INICIAR RUTA',
         cAzul,
-        () => onActualizar('en_camino'),
+        _iniciarRuta,
       );
     }
     if (estado == 'en_camino') {
@@ -329,9 +467,9 @@ class _BotonesEstado extends StatelessWidget {
           Expanded(
             child: _boton(
               Icons.location_on,
-              'LLEGUÉ',
+              _isLoading ? 'VERIFICANDO...' : 'CONFIRMAR LLEGADA',
               cCTAPrimary,
-              () => onActualizar('en_sitio'),
+              _isLoading ? () {} : _confirmarLlegada,
             ),
           ),
           const SizedBox(width: 10),
@@ -340,7 +478,7 @@ class _BotonesEstado extends StatelessWidget {
               Icons.warning,
               'RETRASO',
               cAmarillo,
-              () => onActualizar('retrasado'),
+              () => widget.onActualizar('retrasado'),
               textColor: cTextoOscuro,
             ),
           ),
@@ -350,14 +488,14 @@ class _BotonesEstado extends StatelessWidget {
     if (estado == 'en_sitio' || estado == 'retrasado') {
       return _boton(
         Icons.check_circle,
-        'FINALIZAR TRABAJO',
+        'FINALIZAR Y LLENAR REPORTE',
         cFucsia,
-        () => onActualizar('completado'),
+        widget.onFinalizar,
       );
     }
     return const Center(
       child: Text(
-        '✅ Completado. Esperando evaluación del cliente.',
+        '✅ Trabajo concluido.',
         style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
         textAlign: TextAlign.center,
       ),

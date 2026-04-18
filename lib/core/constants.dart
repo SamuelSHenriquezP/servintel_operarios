@@ -37,9 +37,12 @@ Color getColorEstado(String estado) {
       return Colors.red;
     case 'en_sitio':
       return Colors.teal;
-    case 'completado':
+    case 'revision_cliente':
+      return Colors.deepPurple;
+    case 'completado': // Esto es cierre admin
       return Colors.green;
     case 'evaluado_cliente':
+    case 'reporte_aprobado':
       return Colors.blueGrey;
     case 'cerrado':
       return Colors.grey;

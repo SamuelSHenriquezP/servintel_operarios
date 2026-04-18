@@ -13,7 +13,7 @@ class TrabajosRepository {
   static Stream<QuerySnapshot> streamCompletedRecentForOperario(String uid) {
     return _col
         .where('operarioId', isEqualTo: uid)
-        .where('estado', whereIn: ['completado', 'evaluado_cliente', 'cerrado'])
+        .where('estado', whereIn: ['revision_cliente', 'reporte_aprobado', 'completado', 'evaluado_cliente', 'cerrado'])
         .orderBy('creadoEn', descending: true)
         .limit(5)
         .snapshots();
