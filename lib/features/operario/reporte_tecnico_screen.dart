@@ -140,7 +140,7 @@ class _ReporteTecnicoScreenState extends State<ReporteTecnicoScreen> {
               title: 'Datos del Servicio',
               children: [
                 DropdownButtonFormField<String>(
-                  value: _tipoServicio,
+                  initialValue: _tipoServicio,
                   decoration: const InputDecoration(labelText: 'Tipo de Mantenimiento / Servicio'),
                   items: _tipos.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                   onChanged: (v) => setState(() => _tipoServicio = v),

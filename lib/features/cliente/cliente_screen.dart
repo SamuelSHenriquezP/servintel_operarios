@@ -18,7 +18,7 @@ class _ClienteScreenState extends State<ClienteScreen> {
   final _descCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String? _categoriaSel;
-  bool _isSending = false;
+  final bool _isSending = false;
 
   @override
   void dispose() {
