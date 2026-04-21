@@ -17,11 +17,10 @@ const Color cCTAPrimary = cFucsia;
 const Color cCTASecondary = cAmarillo;
 
 const List<String> kCategorias = [
-  'Electricidad',
-  'Climatizacion',
-  'Plomeria',
-  'Infraestructura',
-  'Mantenimiento Industrial',
+  'Mantenimiento',
+  'Soporte Técnico',
+  'Impresora / Fotocopiadora',
+  'Reparaciones Generales',
 ];
 
 // Helper global para color de estado

@@ -22,31 +22,52 @@ class ServiIntelApp extends StatelessWidget {
       title: 'Servi Intel SAS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: cFondo,
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         primaryColor: cAzul,
-        textTheme: GoogleFonts.montserratTextTheme(),
-        colorScheme: ColorScheme.fromSwatch().copyWith(
+        textTheme: GoogleFonts.montserratTextTheme(Theme.of(context).textTheme),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: cAzul,
           primary: cAzul,
           secondary: cFucsia,
+          surface: Colors.white,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: cAzul,
+          backgroundColor: Colors.white,
+          foregroundColor: cTextoOscuro,
           elevation: 0,
+          scrolledUnderElevation: 0,
           centerTitle: true,
           titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
+            color: cTextoOscuro,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
-            fontStyle: FontStyle.italic,
           ),
-          iconTheme: IconThemeData(color: Colors.white),
+          iconTheme: IconThemeData(color: cTextoOscuro),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
             ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: cAzul, width: 2),
           ),
         ),
       ),

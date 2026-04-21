@@ -58,13 +58,12 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
       }
 
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best, // best to get precision
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
       );
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
         _isLoading = false;
       });
-      _mapController.move(_selectedLocation!, 15);
     } catch (e) {
       _setDefaultLocation();
     }
@@ -131,11 +130,12 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: cFondo,
       appBar: AppBar(
-        title: const Text('Confirmar Ubicación'),
+        title: const Text('Confirmar Ubicación', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: cAzul))
           : Stack(
               children: [
                 FlutterMap(
@@ -155,12 +155,25 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
                         markers: [
                           Marker(
                             point: _selectedLocation!,
-                            width: 50,
-                            height: 50,
-                            child: const Icon(
-                              Icons.location_on,
-                              color: Colors.red,
-                              size: 50,
+                            width: 80,
+                            height: 80,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: cFucsia.withValues(alpha: 0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  color: cFucsia,
+                                  size: 45,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -168,45 +181,67 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
                   ],
                 ),
                 Positioned(
-                  bottom: 20,
+                  bottom: 30,
                   left: 20,
                   right: 20,
-                  child: Card(
-                    elevation: 8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(24.0),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
-                            'Toque el mapa para ajustar la ubicación exacta del servicio.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: Colors.grey),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: cAzul.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.info_outline_rounded, color: cAzul, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Mueve el mapa para marcar el sitio exacto del servicio.',
+                                  style: TextStyle(fontSize: 13, color: cTextoOscuro, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 15),
+                          const SizedBox(height: 20),
                           SizedBox(
                             width: double.infinity,
-                            height: 45,
-                            child: ElevatedButton.icon(
+                            height: 56,
+                            child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: cFucsia,
                                 foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                               ),
                               onPressed: _isSending ? null : _confirmarYEnviar,
-                              icon: _isSending
+                              child: _isSending
                                   ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                     )
-                                  : const Icon(Icons.check_circle),
-                              label: Text(
-                                _isSending ? 'PROCESANDO...' : 'CONFIRMAR Y ENVIAR AL DESPACHO',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
+                                  : const Text(
+                                      'CONFIRMAR Y SOLICITAR TÉCNICO',
+                                      style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                    ),
                             ),
                           ),
                         ],

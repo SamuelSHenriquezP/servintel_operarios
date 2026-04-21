@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants.dart';
+import '../../shared/widgets/premium_widgets.dart';
 
 class VistoBuenoScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -14,16 +15,23 @@ class VistoBuenoScreen extends StatefulWidget {
 
 class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
   bool _isApproving = false;
+  int _rating = 5;
+  final _commentCtrl = TextEditingController();
 
   Future<void> _aprobarReporte() async {
     setState(() => _isApproving = true);
     try {
       await FirebaseFirestore.instance.collection('trabajos').doc(widget.jobId).update({
-        'estado': 'reporte_aprobado',
-        'fechaVistoBueno': FieldValue.serverTimestamp(),
+        'estado': 'evaluado_cliente',
+        'reporteAprobado': true,
+        'evaluacionCliente': {
+          'estrellas': _rating,
+          'comentario': _commentCtrl.text.trim(),
+          'fechaEvaluacion': FieldValue.serverTimestamp(),
+        },
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Comprobante Aprobado Exitosamente'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Gracias por su aprobación y evaluación!'), backgroundColor: Colors.green));
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -35,88 +43,139 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final reporte = widget.data['reporteTecnico'] as Map<String, dynamic>? ?? {};
-
+    final reporte = widget.data['reporteTecnico'] ?? {};
+    
     return Scaffold(
-      appBar: AppBar(title: const Text('Constancia de Servicio')),
+      appBar: const BrandedAppBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SectionHeader(
+              title: 'Resumen de Servicio',
+              subtitle: 'Verifique los detalles del trabajo realizado',
+            ),
+            PremiumCard(
+              accentColor: cAzul,
+              child: Row(
+                children: [
+                   const Icon(Icons.description_outlined, color: cAzul, size: 32),
+                   const SizedBox(width: 16),
+                   Expanded(
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         const Text('RESUMEN TÉCNICO', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: cAzul, letterSpacing: 1)),
+                         Text('Ticket #${widget.jobId.substring(widget.jobId.length - 6).toUpperCase()}', style: const TextStyle(color: cTextoOscuro, fontSize: 16, fontWeight: FontWeight.bold)),
+                       ],
+                     ),
+                   ),
+                ],
+              ),
+            ),
             _buildSection(
-              'Datos del Servicio',
+              'DATOS DEL PERSONAL',
               [
-                _buildRow('Encargado', reporte['encargadoNombre'] ?? ''),
-                _buildRow('Cédula', reporte['encargadoCedula'] ?? ''),
-                _buildRow('Tipo Mantenimiento', reporte['tipoServicio'] ?? ''),
+                _buildRow('Encargado', reporte['encargadoNombre'] ?? 'No especificado'),
+                _buildRow('Identificación', reporte['encargadoCedula'] ?? 'No especificada'),
+                _buildRow('Tipo Servicio', reporte['tipoServicio'] ?? 'General'),
               ],
             ),
             if ((reporte['equipos'] as List?)?.isNotEmpty == true)
               _buildSection(
-                'Información del Equipo',
+                'EQUIPOS INTERVENIDOS',
                 (reporte['equipos'] as List).map((e) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildRow('Equipo', e['equipoMarca'] ?? ''),
-                      _buildRow('Modelo', e['modelo'] ?? ''),
-                      _buildRow('Contador', e['contador'] ?? ''),
-                      const SizedBox(height: 10),
-                    ],
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildRow('Equipo', e['equipoMarca'] ?? ''),
+                        _buildRow('Modelo', e['modelo'] ?? ''),
+                        _buildRow('Contador', e['contador'] ?? ''),
+                      ],
+                    ),
                   );
                 }).toList(),
               ),
             if ((reporte['detallesTecnicos'] as List?)?.isNotEmpty == true)
               _buildSection(
-                'Detalles Técnicos',
+                'DETALLES DE LA INTERVENCIÓN',
                 (reporte['detallesTecnicos'] as List).map((d) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildRow('Diagnóstico', d['diagnostico'] ?? ''),
-                      _buildRow('Solución', d['solucion'] ?? ''),
-                      const SizedBox(height: 10),
-                    ],
-                  );
-                }).toList(),
-              ),
-            if ((reporte['insumos'] as List?)?.isNotEmpty == true)
-              _buildSection(
-                'Desglose de Insumos',
-                (reporte['insumos'] as List).map((i) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildRow('Insumo', i['descripcion'] ?? ''),
-                      _buildRow('Cantidad', i['cantidad'] ?? ''),
-                      const SizedBox(height: 10),
-                    ],
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('DIAGNÓSTICO:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Text(d['diagnostico'] ?? '', style: const TextStyle(color: cTextoOscuro, fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 6),
+                        const Text('SOLUCIÓN APLICADA:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Text(d['solucion'] ?? '', style: const TextStyle(color: cTextoOscuro, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
                   );
                 }).toList(),
               ),
             if (reporte['costoServicio']?.toString().isNotEmpty == true || reporte['costoTecnico']?.toString().isNotEmpty == true)
               _buildSection(
-                'Costos Acordados',
+                'LIQUIDACIÓN DE SERVICIOS',
                 [
                   if (reporte['costoServicio']?.toString().isNotEmpty == true)
-                    _buildRow('Srv. Prestado', '\$${reporte['costoServicio']}'),
+                    _buildRow('Servicio Empresa', '\$${reporte['costoServicio']}', isBold: true),
                   if (reporte['costoTecnico']?.toString().isNotEmpty == true)
-                    _buildRow('Srv. Técnico', '\$${reporte['costoTecnico']}'),
+                    _buildRow('Servicio Técnico', '\$${reporte['costoTecnico']}', isBold: true),
                 ],
               ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                minimumSize: const Size(double.infinity, 50),
+            const SectionHeader(title: 'Calificación del Servicio'),
+            PremiumCard(
+              accentColor: cAmarillo,
+              child: Column(
+                children: [
+                  const Text('¿Qué tal le pareció el servicio?', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) => IconButton(
+                      icon: Icon(
+                        index < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                        color: cAmarillo,
+                        size: 40,
+                      ),
+                      onPressed: () => setState(() => _rating = index + 1),
+                    )),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _commentCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(hintText: 'Déjanos un comentario adicional...'),
+                  ),
+                ],
               ),
-              icon: _isApproving ? const SizedBox() : const Icon(Icons.thumb_up, color: Colors.white),
-              label: _isApproving
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('ACEPTADO / CONFORME', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              onPressed: _isApproving ? null : _aprobarReporte,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: _isApproving ? const SizedBox() : const Icon(Icons.check_circle_outline, color: Colors.white),
+                label: _isApproving
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('ACEPTAR Y FINALIZAR', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                onPressed: _isApproving ? null : _aprobarReporte,
+              ),
             ),
             const SizedBox(height: 40),
           ],
@@ -126,32 +185,39 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
   }
 
   Widget _buildSection(String title, List<Widget> children) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: cAzul)),
-            const Divider(),
-            ...children,
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 24, bottom: 12),
+          child: Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.2)),
         ),
-      ),
+        PremiumCard(
+          padding: const EdgeInsets.all(20),
+          accentColor: cAzul.withValues(alpha: 0.1),
+          child: Column(children: children),
+        ),
+      ],
     );
   }
 
-  Widget _buildRow(String label, String value) {
+  Widget _buildRow(String label, String value, {bool isBold = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: 2, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
-          Expanded(flex: 3, child: Text(value, style: const TextStyle(color: cTextoOscuro))),
-        ],
-      ),
+       padding: const EdgeInsets.symmetric(vertical: 4),
+       child: Row(
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+         children: [
+           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+           Text(
+             value, 
+             style: TextStyle(
+               color: cTextoOscuro, 
+               fontSize: 14, 
+               fontWeight: isBold ? FontWeight.w900 : FontWeight.bold
+             )
+           ),
+         ],
+       ),
     );
   }
 }

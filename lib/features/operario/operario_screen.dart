@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants.dart';
-import '../../shared/widgets/common_widgets.dart';
+import '../../shared/widgets/premium_widgets.dart';
 import 'trabajos_repository.dart';
 import 'reporte_tecnico_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
-// ======================================================================
-// PANTALLA OPERARIO TÉCNICO (OPTIMIZADA)
-// ======================================================================
 class OperarioScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
   const OperarioScreen({super.key, required this.userData});
@@ -48,312 +47,212 @@ class _OperarioScreenState extends State<OperarioScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error en búsqueda: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
       setState(() => _isSearching = false);
     }
   }
 
-  Future<void> _actualizarEstado(
-    BuildContext context,
-    String jobId,
-    String nuevoEstado,
-  ) async {
+  Future<void> _actualizarEstado(String jobId, String nuevoEstado) async {
     final Map<String, dynamic> updateData = {'estado': nuevoEstado};
-
-    if (nuevoEstado == 'en_camino') {
-      updateData['tiempoEnCamino'] = FieldValue.serverTimestamp();
-    }
-    if (nuevoEstado == 'en_sitio') {
-      updateData['tiempoEnSitio'] = FieldValue.serverTimestamp();
-    }
-    if (nuevoEstado == 'completado') {
-      updateData['tiempoCompletado'] = FieldValue.serverTimestamp();
-    }
+    if (nuevoEstado == 'en_camino') updateData['tiempoEnCamino'] = FieldValue.serverTimestamp();
+    if (nuevoEstado == 'en_sitio') updateData['tiempoEnSitio'] = FieldValue.serverTimestamp();
+    if (nuevoEstado == 'completado') updateData['tiempoCompletado'] = FieldValue.serverTimestamp();
 
     try {
-        await TrabajosRepository.updateEstado(jobId, updateData);
-
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Estado actualizado: $nuevoEstado'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      await TrabajosRepository.updateEstado(jobId, updateData);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Estado actualizado'), backgroundColor: Colors.green));
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final nombre = widget.userData['nombre'] ?? 'Técnico';
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Técnico: $nombre'),
+      appBar: BrandedAppBar(
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Cerrar sesión',
-            onPressed: () {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                FirebaseAuth.instance.signOut();
-              });
-            },
+            icon: const Icon(Icons.power_settings_new_rounded, color: Colors.grey),
+            onPressed: () => FirebaseAuth.instance.signOut(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
+          Container(
+            padding: const EdgeInsets.all(20),
+            color: Colors.white,
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Buscar por nombre de cliente...',
-                prefixIcon: const Icon(Icons.search, color: cAzul),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    _buscarTrabajo();
-                  },
-                ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                filled: true,
-                fillColor: cFondo,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                hintText: 'Buscar cliente...',
+                prefixIcon: const Icon(Icons.search_rounded, color: cAzul),
+                suffixIcon: _searchCtrl.text.isNotEmpty ? IconButton(icon: const Icon(Icons.close), onPressed: () { _searchCtrl.clear(); _buscarTrabajo(); }) : null,
               ),
               onSubmitted: (_) => _buscarTrabajo(),
             ),
           ),
           Expanded(
-            child: _searchResults != null
-                ? _buildSearchResults()
-                : _buildEstandardList(uid),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchResults() {
-    if (_isSearching) return const Center(child: CircularProgressIndicator());
-    if (_searchResults!.isEmpty) {
-      return const Center(child: Text('No se encontraron resultados.'));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(15),
-      itemCount: _searchResults!.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return SectionHeader(title: 'Resultados de Búsqueda', count: _searchResults!.length, color: Colors.orange);
-        }
-        final job = _searchResults![index - 1];
-        return _TarjetaOperario(
-          job: job,
-          onActualizarEstado: (nuevo) => _actualizarEstado(context, job.id, nuevo),
-          onFinalizar: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ReporteTecnicoScreen(
-                userData: widget.userData,
-                jobId: job.id,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_searchResults != null) ...[
+                    const SectionHeader(title: 'Resultados de Búsqueda'),
+                    if (_isSearching) const Center(child: CircularProgressIndicator())
+                    else if (_searchResults!.isEmpty) const Text('No se encontraron resultados.')
+                    else ..._searchResults!.map((job) => _TarjetaOperario(job: job, onActualizar: _actualizarEstado, userData: widget.userData)),
+                  ] else ...[
+                    // ACTIVE TASKS
+                    StreamBuilder<QuerySnapshot>(
+                      stream: TrabajosRepository.streamActiveForOperario(uid),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const SizedBox();
+                        final docs = snapshot.data!.docs;
+                        if (docs.isEmpty) return const SizedBox();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SectionHeader(title: 'Tareas Pendientes'),
+                            ...docs.map((job) => _TarjetaOperario(job: job, onActualizar: _actualizarEstado, userData: widget.userData)),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    // COMPLETED TASKS
+                    StreamBuilder<QuerySnapshot>(
+                      stream: TrabajosRepository.streamCompletedRecentForOperario(uid),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const SizedBox();
+                        final docs = snapshot.data!.docs;
+                        if (docs.isEmpty) return const SizedBox();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SectionHeader(title: 'Recién Completadas'),
+                            ...docs.map((job) => _TarjetaOperario(job: job, onActualizar: (_, __) {}, userData: widget.userData)),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEstandardList(String uid) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      children: [
-        StreamBuilder<QuerySnapshot>(
-          stream: TrabajosRepository.streamActiveForOperario(uid),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return const SizedBox();
-            final docs = snapshot.data!.docs;
-            if (docs.isEmpty) return const SizedBox();
-
-            return Column(
-              children: [
-                SectionHeader(title: 'Tareas Activas', count: docs.length, color: cAzul),
-                ...docs.map((job) => _TarjetaOperario(
-                      job: job,
-                      onActualizarEstado: (nuevo) => _actualizarEstado(context, job.id, nuevo),
-                      onFinalizar: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ReporteTecnicoScreen(
-                            userData: widget.userData,
-                            jobId: job.id,
-                          ),
-                        ),
-                      ),
-                    )),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 10),
-        StreamBuilder<QuerySnapshot>(
-          stream: TrabajosRepository.streamCompletedRecentForOperario(uid),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return const SizedBox();
-            final docs = snapshot.data!.docs;
-            if (docs.isEmpty) return const SizedBox();
-
-            return Column(
-              children: [
-                SectionHeader(title: 'Completadas Recientes', count: docs.length, color: Colors.green),
-                ...docs.map((job) => _TarjetaOperario(
-                      job: job,
-                      onActualizarEstado: (_) {},
-                      onFinalizar: () {},
-                    )),
-              ],
-            );
-          },
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
 class _TarjetaOperario extends StatelessWidget {
   final QueryDocumentSnapshot job;
-  final void Function(String nuevoEstado) onActualizarEstado;
-  final VoidCallback onFinalizar;
+  final Function(String, String) onActualizar;
+  final Map<String, dynamic> userData;
 
-  const _TarjetaOperario({required this.job, required this.onActualizarEstado, required this.onFinalizar});
+  const _TarjetaOperario({required this.job, required this.onActualizar, required this.userData});
 
   @override
   Widget build(BuildContext context) {
     final data = job.data() as Map<String, dynamic>;
     final String estado = data['estado'] ?? '';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-            color: getColorEstado(estado).withValues(alpha: 0.2),
-            width: 1,
-          ),
-        ),
-                child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                cFondo,
-                getColorEstado(estado).withValues(alpha: 0.02),
-              ],
-            ),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return PremiumCard(
+      accentColor: getColorEstado(estado),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      data['categoria'] ?? '',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                        color: cAzul,
-                      ),
-                    ),
-                  ),
-                  EstadoChip(estado: estado, darkText: false),
-                ],
+              Text(
+                (data['categoria'] ?? 'SERVICIO').toUpperCase(),
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: cAzul, letterSpacing: 1.2),
               ),
-              const SizedBox(height: 5),
-              Row(
-                children: [
-                  const Icon(Icons.person_pin, size: 16, color: cTextoOscuro),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Cliente: ${data['clienteNombre'] ?? ''}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: cTextoOscuro,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: cFondo,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                width: double.infinity,
-                child: Text(
-                  data['descripcion'] ?? '',
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
-                ),
-              ),
-              const SizedBox(height: 15),
-              _BotonesEstado(
-                data: data,
-                jobId: job.id,
-                onActualizar: onActualizarEstado,
-                onFinalizar: onFinalizar,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: getColorEstado(estado).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(estado.toUpperCase(), style: TextStyle(color: getColorEstado(estado), fontSize: 9, fontWeight: FontWeight.w900)),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.person_pin_rounded, color: cTextoOscuro, size: 20),
+              const SizedBox(width: 8),
+              Text(data['clienteNombre'] ?? 'Cliente', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: cTextoOscuro)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0))),
+            child: Text(data['descripcion'] ?? '', style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.5)),
+          ),
+          if (data['lat'] != null) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 120,
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng((data['lat'] as num).toDouble(), (data['lng'] as num).toDouble()),
+                    initialZoom: 15.0,
+                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.servintel.operarios',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng((data['lat'] as num).toDouble(), (data['lng'] as num).toDouble()),
+                          width: 40,
+                          height: 40,
+                          child: const Icon(Icons.location_on, color: Colors.red, size: 30),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          _BotonAccionOperario(data: data, jobId: job.id, onActualizar: onActualizar, userData: userData),
+        ],
       ),
     );
   }
 }
 
-class _BotonesEstado extends StatefulWidget {
+class _BotonAccionOperario extends StatefulWidget {
   final Map<String, dynamic> data;
   final String jobId;
-  final void Function(String) onActualizar;
-  final VoidCallback onFinalizar;
+  final Function(String, String) onActualizar;
+  final Map<String, dynamic> userData;
 
-  const _BotonesEstado({
-    required this.data,
-    required this.jobId,
-    required this.onActualizar,
-    required this.onFinalizar,
-  });
+  const _BotonAccionOperario({required this.data, required this.jobId, required this.onActualizar, required this.userData});
 
   @override
-  State<_BotonesEstado> createState() => _BotonesEstadoState();
+  State<_BotonAccionOperario> createState() => _BotonAccionOperarioState();
 }
 
-class _BotonesEstadoState extends State<_BotonesEstado> {
+class _BotonAccionOperarioState extends State<_BotonAccionOperario> {
   bool _isLoading = false;
 
   void _iniciarRuta() async {
@@ -361,44 +260,19 @@ class _BotonesEstadoState extends State<_BotonesEstado> {
     final lng = widget.data['lng'];
     if (lat != null && lng != null) {
       final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
+      if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
     }
-    widget.onActualizar('en_camino');
+    widget.onActualizar(widget.jobId, 'en_camino');
   }
 
   Future<void> _confirmarLlegada() async {
     setState(() => _isLoading = true);
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) throw Exception('GPS desactivado');
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) throw Exception('Permiso GPS denegado');
-      }
-
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      
-      final latDest = widget.data['lat'];
-      final lngDest = widget.data['lng'];
-      
-      if (latDest != null && lngDest != null) {
-        double distance = Geolocator.distanceBetween(
-          position.latitude, position.longitude,
-          latDest, lngDest,
-        );
-        
-        if (distance > 50) {
-          throw Exception('Estás a ${distance.toStringAsFixed(0)}m del destino. Debes estar a menos de 50 metros para confirmar la llegada.');
-        }
-      }
-
+      Position pos = await Geolocator.getCurrentPosition();
+      double dist = Geolocator.distanceBetween(pos.latitude, pos.longitude, widget.data['lat'], widget.data['lng']);
+      if (dist > 100) throw 'Debes estar a menos de 100m del destino.';
       if (!mounted) return;
       _solicitarPin();
-
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
@@ -411,38 +285,17 @@ class _BotonesEstadoState extends State<_BotonesEstado> {
     final pinCtrl = TextEditingController();
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirmar Llegada (Código PIN)', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Pídele al cliente el número PIN de 4 dígitos para confirmar tu llegada.', style: TextStyle(fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 15),
-            TextField(
-              controller: pinCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, letterSpacing: 10, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(border: OutlineInputBorder(), counterText: ''),
-            )
-          ],
-        ),
+        title: const Text('Verificar PIN'),
+        content: TextField(controller: pinCtrl, keyboardType: TextInputType.number, maxLength: 4, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, letterSpacing: 8)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar', style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: cFucsia),
-            onPressed: () {
-              if (pinCtrl.text == widget.data['pinCode']) {
-                Navigator.pop(ctx);
-                widget.onActualizar('en_sitio');
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Llegada confirmada exitosamente.'), backgroundColor: Colors.green));
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN incorrecto.'), backgroundColor: Colors.red));
-              }
+            onPressed: () { 
+              if (pinCtrl.text == widget.data['pinCode']) { Navigator.pop(ctx); widget.onActualizar(widget.jobId, 'en_sitio'); }
+              else { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN Incorrecto'))); }
             },
-            child: const Text('VERIFICAR PIN'),
+            child: const Text('VERIFICAR'),
           )
         ],
       ),
@@ -454,72 +307,23 @@ class _BotonesEstadoState extends State<_BotonesEstado> {
     final estado = widget.data['estado'] ?? '';
 
     if (estado == 'asignado') {
-      return _boton(
-        Icons.directions_car,
-        'INICIAR RUTA',
-        cAzul,
-        _iniciarRuta,
-      );
+      return _btn(Icons.route_rounded, 'INICIAR RUTA', cAzul, _iniciarRuta);
     }
     if (estado == 'en_camino') {
-      return Row(
-        children: [
-          Expanded(
-            child: _boton(
-              Icons.location_on,
-              _isLoading ? 'VERIFICANDO...' : 'CONFIRMAR LLEGADA',
-              cCTAPrimary,
-              _isLoading ? () {} : _confirmarLlegada,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _boton(
-              Icons.warning,
-              'RETRASO',
-              cAmarillo,
-              () => widget.onActualizar('retrasado'),
-              textColor: cTextoOscuro,
-            ),
-          ),
-        ],
-      );
+      return Row(children: [
+        Expanded(child: _btn(Icons.location_on_rounded, _isLoading ? '...' : 'LLEGADA', cFucsia, _confirmarLlegada)),
+        const SizedBox(width: 10),
+        Expanded(child: _btn(Icons.timer_rounded, 'RETRASO', cAmarillo, () => widget.onActualizar(widget.jobId, 'retrasado'), t: cTextoOscuro)),
+      ]);
     }
     if (estado == 'en_sitio' || estado == 'retrasado') {
-      return _boton(
-        Icons.check_circle,
-        'FINALIZAR Y LLENAR REPORTE',
-        cFucsia,
-        widget.onFinalizar,
-      );
+      return _btn(Icons.fact_check_rounded, 'FINALIZAR REPORTE', cAzul, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReporteTecnicoScreen(userData: widget.userData, jobId: widget.jobId))));
     }
-    return const Center(
-      child: Text(
-        '✅ Trabajo concluido.',
-        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
+    return const Center(child: Text('✅ FINALIZADO', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green)));
   }
 
-  Widget _boton(
-    IconData icon,
-    String label,
-    Color bg,
-    VoidCallback onTap, {
-    Color textColor = Colors.white,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        icon: Icon(icon, color: textColor),
-        label: Text(
-          label,
-          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-        ),
-        style: ElevatedButton.styleFrom(backgroundColor: bg),
-        onPressed: onTap,
-      ),
-    );
+  Widget _btn(IconData i, String l, Color b, VoidCallback o, {Color t = Colors.white}) {
+    return SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(icon: Icon(i, color: t, size: 18), label: Text(l, style: TextStyle(color: t, fontWeight: FontWeight.w900, fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: b), onPressed: o));
   }
 }
+
