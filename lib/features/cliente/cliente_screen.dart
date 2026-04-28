@@ -18,6 +18,18 @@ class _ClienteScreenState extends State<ClienteScreen> {
   final _descCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String? _categoriaSel;
+  late Stream<QuerySnapshot> _historialStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _historialStream = FirebaseFirestore.instance
+        .collection('trabajos')
+        .where('clienteId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+        .orderBy('creadoEn', descending: true)
+        .limit(10)
+        .snapshots();
+  }
 
   @override
   void dispose() {
@@ -113,7 +125,7 @@ class _ClienteScreenState extends State<ClienteScreen> {
                     const Text('ÁREA TÉCNICA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      initialValue: _categoriaSel,
+                      value: _categoriaSel,
                       decoration: const InputDecoration(hintText: 'Seleccione el servicio...'),
                       items: kCategorias.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                       onChanged: (v) => setState(() => _categoriaSel = v),
@@ -155,13 +167,9 @@ class _ClienteScreenState extends State<ClienteScreen> {
 
             // LIST OF REQUESTS
             StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('trabajos')
-                  .where('clienteId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-                  .orderBy('creadoEn', descending: true)
-                  .limit(10)
-                  .snapshots(),
+              stream: _historialStream,
               builder: (context, snapshot) {
+                if (snapshot.hasError) return Center(child: Text('Error al cargar datos: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 if (snapshot.data!.docs.isEmpty) {
                   return const Center(
@@ -207,6 +215,16 @@ class _ClienteScreenState extends State<ClienteScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(data['categoria'] ?? 'General', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: cTextoOscuro)),
+                          if (data['direccionText'] != null && data['direccionText'].toString().isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on_rounded, size: 14, color: cFucsia),
+                                const SizedBox(width: 4),
+                                Expanded(child: Text(data['direccionText'], style: const TextStyle(fontSize: 13, color: cTextoOscuro, fontWeight: FontWeight.w600))),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 6),
                           Text(data['descripcion'] ?? '', style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
                           const Divider(height: 32),

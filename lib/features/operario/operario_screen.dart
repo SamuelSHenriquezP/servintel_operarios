@@ -22,6 +22,17 @@ class _OperarioScreenState extends State<OperarioScreen> {
   final _searchCtrl = TextEditingController();
   List<QueryDocumentSnapshot>? _searchResults;
   bool _isSearching = false;
+  late Stream<QuerySnapshot> _activeStream;
+  late Stream<QuerySnapshot> _completedStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    _activeStream = TrabajosRepository.streamActiveForOperario(uid);
+    _completedStream = TrabajosRepository.streamCompletedRecentForOperario(uid);
+    _searchCtrl.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -71,7 +82,6 @@ class _OperarioScreenState extends State<OperarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
       appBar: BrandedAppBar(
@@ -112,7 +122,7 @@ class _OperarioScreenState extends State<OperarioScreen> {
                   ] else ...[
                     // ACTIVE TASKS
                     StreamBuilder<QuerySnapshot>(
-                      stream: TrabajosRepository.streamActiveForOperario(uid),
+                      stream: _activeStream,
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) return const SizedBox();
                         final docs = snapshot.data!.docs;
@@ -129,7 +139,7 @@ class _OperarioScreenState extends State<OperarioScreen> {
                     const SizedBox(height: 10),
                     // COMPLETED TASKS
                     StreamBuilder<QuerySnapshot>(
-                      stream: TrabajosRepository.streamCompletedRecentForOperario(uid),
+                      stream: _completedStream,
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) return const SizedBox();
                         final docs = snapshot.data!.docs;
@@ -195,6 +205,20 @@ class _TarjetaOperario extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          if (data['direccionText'] != null && data['direccionText'].toString().isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(color: cFucsia.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_city_rounded, color: cFucsia, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(data['direccionText'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: cFucsia))),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0))),
@@ -269,7 +293,9 @@ class _BotonAccionOperarioState extends State<_BotonAccionOperario> {
     setState(() => _isLoading = true);
     try {
       Position pos = await Geolocator.getCurrentPosition();
-      double dist = Geolocator.distanceBetween(pos.latitude, pos.longitude, widget.data['lat'], widget.data['lng']);
+      final double destLat = (widget.data['lat'] as num).toDouble();
+      final double destLng = (widget.data['lng'] as num).toDouble();
+      double dist = Geolocator.distanceBetween(pos.latitude, pos.longitude, destLat, destLng);
       if (dist > 100) throw 'Debes estar a menos de 100m del destino.';
       if (!mounted) return;
       _solicitarPin();
@@ -291,15 +317,19 @@ class _BotonAccionOperarioState extends State<_BotonAccionOperario> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
-            onPressed: () { 
-              if (pinCtrl.text == widget.data['pinCode']) { Navigator.pop(ctx); widget.onActualizar(widget.jobId, 'en_sitio'); }
-              else { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN Incorrecto'))); }
+            onPressed: () {
+              if (pinCtrl.text == widget.data['pinCode']) {
+                Navigator.pop(ctx);
+                widget.onActualizar(widget.jobId, 'en_sitio');
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN Incorrecto')));
+              }
             },
             child: const Text('VERIFICAR'),
-          )
+          ),
         ],
       ),
-    );
+    ).then((_) => pinCtrl.dispose());
   }
 
   @override

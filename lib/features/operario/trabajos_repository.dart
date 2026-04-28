@@ -7,6 +7,7 @@ class TrabajosRepository {
     return _col
         .where('operarioId', isEqualTo: uid)
         .where('estado', whereIn: ['asignado', 'en_camino', 'en_sitio', 'retrasado'])
+        .orderBy('creadoEn', descending: true)
         .snapshots();
   }
 

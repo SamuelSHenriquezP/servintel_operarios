@@ -111,7 +111,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (v == null || v.trim().isEmpty) {
                       return 'Ingrese su correo';
                     }
-                    if (!v.contains('@')) {
+                    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$');
+                    if (!emailRegex.hasMatch(v.trim())) {
                       return 'Correo inválido';
                     }
                     return null;

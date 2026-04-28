@@ -25,6 +25,7 @@ class MapaClienteScreen extends StatefulWidget {
 
 class _MapaClienteScreenState extends State<MapaClienteScreen> {
   final MapController _mapController = MapController();
+  final TextEditingController _direccionCtrl = TextEditingController();
   LatLng? _selectedLocation;
   bool _isLoading = true;
   bool _isSending = false;
@@ -33,6 +34,13 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
   void initState() {
     super.initState();
     _initLocation();
+  }
+
+  @override
+  void dispose() {
+    _direccionCtrl.dispose();
+    _mapController.dispose();
+    super.dispose();
   }
 
   Future<void> _initLocation() async {
@@ -91,14 +99,15 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) throw Exception('Sin autenticación');
 
-      // Generate Random 4-digit PIN
-      final pinCode = (Random().nextInt(9000) + 1000).toString();
+      // Generate cryptographically secure 4-digit PIN
+      final pinCode = (Random.secure().nextInt(9000) + 1000).toString();
 
       await FirebaseFirestore.instance.collection('trabajos').add({
         'clienteId': uid,
         'clienteNombre': widget.userData['nombre'] ?? 'Cliente',
         'categoria': widget.categoria,
         'descripcion': widget.descripcion,
+        'direccionText': _direccionCtrl.text.trim(),
         'lat': _selectedLocation!.latitude,
         'lng': _selectedLocation!.longitude,
         'pinCode': pinCode,
@@ -214,13 +223,27 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
                               const SizedBox(width: 12),
                               const Expanded(
                                 child: Text(
-                                  'Mueve el mapa para marcar el sitio exacto del servicio.',
+                                  'Si tienes problemas con el mapa, escribe tu dirección exacta abajo.',
                                   style: TextStyle(fontSize: 13, color: cTextoOscuro, fontWeight: FontWeight.w500),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _direccionCtrl,
+                            decoration: InputDecoration(
+                              hintText: 'Ej: Carrera 45 # 12-00, Piso 3',
+                              filled: true,
+                              fillColor: cAzul.withValues(alpha: 0.05),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
                             height: 56,

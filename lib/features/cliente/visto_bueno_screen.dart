@@ -18,6 +18,12 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
   int _rating = 5;
   final _commentCtrl = TextEditingController();
 
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _aprobarReporte() async {
     setState(() => _isApproving = true);
     try {
