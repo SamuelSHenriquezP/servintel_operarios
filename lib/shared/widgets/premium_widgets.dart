@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants.dart';
 
 class PremiumCard extends StatelessWidget {
@@ -73,15 +74,14 @@ class BrandedAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 10),
           RichText(
-            text: const TextSpan(
-              style: TextStyle(
-                fontFamily: 'Montserrat',
+            text: TextSpan(
+              style: GoogleFonts.montserrat(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: cTextoOscuro,
                 letterSpacing: -1,
               ),
-              children: [
+              children: const [
                 TextSpan(text: 'SERVI'),
                 TextSpan(
                   text: 'INTEL',

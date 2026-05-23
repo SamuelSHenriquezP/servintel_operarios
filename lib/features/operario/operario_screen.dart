@@ -132,9 +132,31 @@ class _OperarioScreenState extends State<OperarioScreen> {
                     StreamBuilder<QuerySnapshot>(
                       stream: _activeStream,
                       builder: (context, snapshot) {
-                        if (!snapshot.hasData) return const SizedBox();
-                        final docs = snapshot.data!.docs;
-                        if (docs.isEmpty) return const SizedBox();
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
+                        }
+                        if (snapshot.hasError) {
+                          // Si hay datos previos en caché, mostrarlos igual
+                          if (snapshot.data != null && snapshot.data!.docs.isNotEmpty) {
+                            final docs = snapshot.data!.docs;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SectionHeader(title: 'Tareas Pendientes'),
+                                ...docs.map((job) => _TarjetaOperario(job: job, onActualizar: _actualizarEstado, userData: widget.userData)),
+                              ],
+                            );
+                          }
+                          return const SizedBox();
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox();
+                        final docs = List.of(snapshot.data!.docs)
+                          ..sort((a, b) {
+                            final aTs = (a.data() as Map)['creadoEn'];
+                            final bTs = (b.data() as Map)['creadoEn'];
+                            if (aTs == null || bTs == null) return 0;
+                            return (bTs as Timestamp).compareTo(aTs as Timestamp);
+                          });
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -149,14 +171,36 @@ class _OperarioScreenState extends State<OperarioScreen> {
                     StreamBuilder<QuerySnapshot>(
                       stream: _completedStream,
                       builder: (context, snapshot) {
-                        if (!snapshot.hasData) return const SizedBox();
-                        final docs = snapshot.data!.docs;
-                        if (docs.isEmpty) return const SizedBox();
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const SizedBox();
+                        }
+                        if (snapshot.hasError) {
+                          if (snapshot.data != null && snapshot.data!.docs.isNotEmpty) {
+                            final docs = snapshot.data!.docs;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SectionHeader(title: 'Recién Completadas'),
+                                ...docs.map((job) => _TarjetaOperario(job: job, onActualizar: (_, __) {}, userData: widget.userData)),
+                              ],
+                            );
+                          }
+                          return const SizedBox();
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox();
+                        final docs = List.of(snapshot.data!.docs)
+                          ..sort((a, b) {
+                            final aTs = (a.data() as Map)['creadoEn'];
+                            final bTs = (b.data() as Map)['creadoEn'];
+                            if (aTs == null || bTs == null) return 0;
+                            return (bTs as Timestamp).compareTo(aTs as Timestamp);
+                          });
+                        final docsLimited = docs.take(5).toList();
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SectionHeader(title: 'Recién Completadas'),
-                            ...docs.map((job) => _TarjetaOperario(job: job, onActualizar: (_, __) {}, userData: widget.userData)),
+                            ...docsLimited.map((job) => _TarjetaOperario(job: job, onActualizar: (_, __) {}, userData: widget.userData)),
                           ],
                         );
                       },
@@ -187,16 +231,21 @@ class _TarjetaOperario extends StatelessWidget {
     return PremiumCard(
       accentColor: getColorEstado(estado),
       padding: const EdgeInsets.all(20),
+      onTap: () => _mostrarDetalles(context, data, job.id),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                (data['categoria'] ?? 'SERVICIO').toUpperCase(),
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: cAzul, letterSpacing: 1.2),
+              Flexible(
+                child: Text(
+                  (data['categoria'] ?? 'SERVICIO').toUpperCase(),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: cAzul, letterSpacing: 1.2),
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: getColorEstado(estado).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
@@ -209,7 +258,13 @@ class _TarjetaOperario extends StatelessWidget {
             children: [
               const Icon(Icons.person_pin_rounded, color: cTextoOscuro, size: 20),
               const SizedBox(width: 8),
-              Text(data['clienteNombre'] ?? 'Cliente', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: cTextoOscuro)),
+              Expanded(
+                child: Text(
+                  data['clienteNombre'] ?? 'Cliente',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: cTextoOscuro),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -234,33 +289,66 @@ class _TarjetaOperario extends StatelessWidget {
           ),
           if (data['lat'] != null) ...[
             const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                height: 120,
-                child: FlutterMap(
-                  options: MapOptions(
-                    initialCenter: LatLng((data['lat'] as num).toDouble(), (data['lng'] as num).toDouble()),
-                    initialZoom: 15.0,
-                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.servintel.operarios',
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: LatLng((data['lat'] as num).toDouble(), (data['lng'] as num).toDouble()),
-                          width: 40,
-                          height: 40,
-                          child: const Icon(Icons.location_on, color: Colors.red, size: 30),
+            GestureDetector(
+              onTap: () async {
+                final lat = (data['lat'] as num).toDouble();
+                final lng = (data['lng'] as num).toDouble();
+                final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                try {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } catch (_) {
+                  await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+                }
+              },
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 120,
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng((data['lat'] as num).toDouble(), (data['lng'] as num).toDouble()),
+                          initialZoom: 15.0,
+                          interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
                         ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.servintel.operarios',
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng((data['lat'] as num).toDouble(), (data['lng'] as num).toDouble()),
+                                width: 40,
+                                height: 40,
+                                child: const Icon(Icons.location_on, color: Colors.red, size: 30),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.open_in_new_rounded, color: Colors.white, size: 14),
+                        SizedBox(width: 6),
+                        Text('Abrir en Google Maps', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -269,6 +357,92 @@ class _TarjetaOperario extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _mostrarDetalles(BuildContext context, Map<String, dynamic> data, String jobId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          children: [
+            Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text((data['categoria'] ?? 'SERVICIO').toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: cAzul, letterSpacing: 1.2)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(color: getColorEstado(data['estado'] ?? '').withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                  child: Text((data['estado'] ?? '').toUpperCase(), style: TextStyle(color: getColorEstado(data['estado'] ?? ''), fontSize: 11, fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            _detalleItem(Icons.person_pin_rounded, 'Cliente', data['clienteNombre']),
+            if (data['clienteTelefono'] != null && data['clienteTelefono'].toString().isNotEmpty)
+              _detalleItem(Icons.phone_rounded, 'Teléfono', data['clienteTelefono']),
+            if (data['clienteEmail'] != null && data['clienteEmail'].toString().isNotEmpty)
+              _detalleItem(Icons.email_rounded, 'Email', data['clienteEmail']),
+            if (data['direccionText'] != null && data['direccionText'].toString().isNotEmpty)
+              _detalleItem(Icons.location_on_rounded, 'Dirección', data['direccionText']),
+            if (data['descripcion'] != null && data['descripcion'].toString().isNotEmpty)
+              _detalleItem(Icons.description_rounded, 'Descripción', data['descripcion']),
+            if (data['notas'] != null && data['notas'].toString().isNotEmpty)
+              _detalleItem(Icons.note_rounded, 'Notas', data['notas']),
+            if (data['pinCode'] != null)
+              _detalleItem(Icons.pin_rounded, 'PIN de verificación', data['pinCode'].toString()),
+            if (data['creadoEn'] != null) ...[
+              const SizedBox(height: 8),
+              _detalleItem(Icons.calendar_today_rounded, 'Creado', _formatTimestamp(data['creadoEn'])),
+            ],
+            const SizedBox(height: 8),
+            Text('ID: $jobId', style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontFamily: 'monospace')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detalleItem(IconData icon, String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: cAzul),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(value?.toString() ?? '—', style: const TextStyle(fontSize: 14, color: cTextoOscuro, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimestamp(dynamic ts) {
+    if (ts == null) return '—';
+    try {
+      final dt = (ts as Timestamp).toDate();
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return ts.toString();
+    }
   }
 }
 

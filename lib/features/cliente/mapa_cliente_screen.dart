@@ -251,6 +251,7 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
                                 backgroundColor: cFucsia,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                               ),
                               onPressed: _isSending ? null : _confirmarYEnviar,
@@ -260,9 +261,12 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
                                       height: 24,
                                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                     )
-                                  : const Text(
-                                      'CONFIRMAR Y SOLICITAR TÉCNICO',
-                                      style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                  : const FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'CONFIRMAR Y SOLICITAR TÉCNICO',
+                                        style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                      ),
                                     ),
                             ),
                           ),

@@ -84,13 +84,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 160,
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'SERVI INTEL SAS',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
-                    color: cTextoOscuro,
+                const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'SERVI INTEL SAS',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                      color: cTextoOscuro,
+                    ),
                   ),
                 ),
                 const Text(
@@ -154,7 +157,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: cAzul),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: cAzul,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: cAzul.withValues(alpha: 0.7),
+                    ),
                     onPressed: _isLoading ? null : _login,
                     child: _isLoading
                         ? const SizedBox(
@@ -170,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                   ),
