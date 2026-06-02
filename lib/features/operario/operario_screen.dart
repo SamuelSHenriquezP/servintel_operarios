@@ -31,7 +31,6 @@ class _OperarioScreenState extends State<OperarioScreen> {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     _activeStream = TrabajosRepository.streamActiveForOperario(uid);
     _completedStream = TrabajosRepository.streamCompletedRecentForOperario(uid);
-    _searchCtrl.addListener(() => setState(() {}));
   }
 
   @override
@@ -68,7 +67,8 @@ class _OperarioScreenState extends State<OperarioScreen> {
     final Map<String, dynamic> updateData = {'estado': nuevoEstado};
     if (nuevoEstado == 'en_camino') updateData['tiempoEnCamino'] = FieldValue.serverTimestamp();
     if (nuevoEstado == 'en_sitio') updateData['tiempoEnSitio'] = FieldValue.serverTimestamp();
-    if (nuevoEstado == 'completado') updateData['tiempoCompletado'] = FieldValue.serverTimestamp();
+    if (nuevoEstado == 'en_progreso') updateData['tiempoInicioTrabajo'] = FieldValue.serverTimestamp();
+    if (nuevoEstado == 'esperando_cierre') updateData['tiempoFinTrabajo'] = FieldValue.serverTimestamp();
 
     try {
       await TrabajosRepository.updateEstado(jobId, updateData);
@@ -103,7 +103,15 @@ class _OperarioScreenState extends State<OperarioScreen> {
               decoration: InputDecoration(
                 hintText: 'Buscar cliente...',
                 prefixIcon: const Icon(Icons.search_rounded, color: cAzul),
-                suffixIcon: _searchCtrl.text.isNotEmpty ? IconButton(icon: const Icon(Icons.close), onPressed: () { _searchCtrl.clear(); _buscarTrabajo(); }) : null,
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchCtrl,
+                  builder: (_, value, __) => value.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () { _searchCtrl.clear(); _buscarTrabajo(); },
+                      )
+                    : const SizedBox.shrink(),
+                ),
               ),
               onSubmitted: (_) => _buscarTrabajo(),
             ),
@@ -453,26 +461,20 @@ class _BotonAccionOperario extends StatefulWidget {
 class _BotonAccionOperarioState extends State<_BotonAccionOperario> {
   bool _isLoading = false;
 
-  void _iniciarRuta() async {
+  Future<void> _iniciarRuta() async {
     final lat = widget.data['lat'];
     final lng = widget.data['lng'];
-    if (lat != null && lng != null) {
-      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
-      try {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        try {
-          await launchUrl(url, mode: LaunchMode.inAppBrowserView);
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('No se pudo abrir Maps: $e'), backgroundColor: Colors.red),
-            );
-          }
-        }
+    try {
+      if (lat != null && lng != null) {
+        final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+        if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
       }
+      widget.onActualizar(widget.jobId, 'en_camino');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al abrir mapa: $e'), backgroundColor: Colors.red));
     }
-    widget.onActualizar(widget.jobId, 'en_camino');
   }
 
   Future<void> _confirmarLlegada() async {
@@ -504,7 +506,7 @@ class _BotonAccionOperarioState extends State<_BotonAccionOperario> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () {
-              if (pinCtrl.text == widget.data['pinCode']) {
+              if (pinCtrl.text.trim() == widget.data['pinCode'].toString().trim()) {
                 Navigator.pop(ctx);
                 widget.onActualizar(widget.jobId, 'en_sitio');
               } else {
@@ -527,18 +529,30 @@ class _BotonAccionOperarioState extends State<_BotonAccionOperario> {
     }
     if (estado == 'en_camino') {
       return Row(children: [
-        Expanded(child: _btn(Icons.location_on_rounded, _isLoading ? '...' : 'LLEGADA', cFucsia, _confirmarLlegada)),
+        Expanded(child: _btn(Icons.location_on_rounded, _isLoading ? '...' : 'LLEGADA', cFucsia, _isLoading ? null : _confirmarLlegada)),
         const SizedBox(width: 10),
         Expanded(child: _btn(Icons.timer_rounded, 'RETRASO', cAmarillo, () => widget.onActualizar(widget.jobId, 'retrasado'), t: cTextoOscuro)),
       ]);
     }
     if (estado == 'en_sitio' || estado == 'retrasado') {
-      return _btn(Icons.fact_check_rounded, 'FINALIZAR REPORTE', cAzul, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReporteTecnicoScreen(userData: widget.userData, jobId: widget.jobId))));
+      return _btn(Icons.fact_check_rounded, 'GENERAR DIAGNÓSTICO', cAzul, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReporteTecnicoScreen(userData: widget.userData, jobId: widget.jobId))));
+    }
+    if (estado == 'revision_cliente') {
+      return const Center(child: Text('⏳ ESPERANDO APROBACIÓN DEL CLIENTE', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.orange)));
+    }
+    if (estado == 'trabajo_aprobado') {
+      return _btn(Icons.build_circle_rounded, 'EMPEZAR TRABAJO', cFucsia, () => widget.onActualizar(widget.jobId, 'en_progreso'));
+    }
+    if (estado == 'en_progreso') {
+      return _btn(Icons.check_circle_rounded, 'FINALIZAR TRABAJO', Colors.green, () => widget.onActualizar(widget.jobId, 'esperando_cierre'));
+    }
+    if (estado == 'esperando_cierre') {
+      return const Center(child: Text('📋 TRABAJO ENVIADO · ESPERANDO CIERRE ADMIN', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.teal, fontSize: 12)));
     }
     return const Center(child: Text('✅ FINALIZADO', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green)));
   }
 
-  Widget _btn(IconData i, String l, Color b, VoidCallback o, {Color t = Colors.white}) {
+  Widget _btn(IconData i, String l, Color b, VoidCallback? o, {Color t = Colors.white}) {
     return SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(icon: Icon(i, color: t, size: 18), label: Text(l, style: TextStyle(color: t, fontWeight: FontWeight.w900, fontSize: 13)), style: ElevatedButton.styleFrom(backgroundColor: b), onPressed: o));
   }
 }

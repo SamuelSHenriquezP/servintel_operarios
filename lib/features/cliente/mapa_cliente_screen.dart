@@ -39,7 +39,6 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
   @override
   void dispose() {
     _direccionCtrl.dispose();
-    _mapController.dispose();
     super.dispose();
   }
 

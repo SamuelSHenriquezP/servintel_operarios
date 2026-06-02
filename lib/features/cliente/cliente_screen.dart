@@ -5,6 +5,7 @@ import '../../core/constants.dart';
 import '../../shared/widgets/premium_widgets.dart';
 import 'visto_bueno_screen.dart';
 import 'mapa_cliente_screen.dart';
+import 'calificacion_screen.dart';
 
 class ClienteScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -39,7 +40,7 @@ class _ClienteScreenState extends State<ClienteScreen> {
 
   Future<void> _enviarSolicitud() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final categoria = _categoriaSel!;
     final desc = _descCtrl.text.trim();
 
@@ -66,7 +67,10 @@ class _ClienteScreenState extends State<ClienteScreen> {
       appBar: BrandedAppBar(
         actions: [
           IconButton(
-            icon: const Icon(Icons.power_settings_new_rounded, color: Colors.grey),
+            icon: const Icon(
+              Icons.power_settings_new_rounded,
+              color: Colors.grey,
+            ),
             onPressed: () => FirebaseAuth.instance.signOut(),
           ),
           const SizedBox(width: 8),
@@ -109,7 +113,11 @@ class _ClienteScreenState extends State<ClienteScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.headset_mic_rounded, color: cFucsia, size: 20),
+                        Icon(
+                          Icons.headset_mic_rounded,
+                          color: cFucsia,
+                          size: 20,
+                        ),
                         SizedBox(width: 10),
                         Text(
                           'SOLICITAR INTERVENCIÓN',
@@ -122,25 +130,49 @@ class _ClienteScreenState extends State<ClienteScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    const Text('ÁREA TÉCNICA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(
+                      'ÁREA TÉCNICA',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       initialValue: _categoriaSel,
-                      decoration: const InputDecoration(hintText: 'Seleccione el servicio...'),
-                      items: kCategorias.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      decoration: const InputDecoration(
+                        hintText: 'Seleccione el servicio...',
+                      ),
+                      items: kCategorias
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
                       onChanged: (v) => setState(() => _categoriaSel = v),
-                      validator: (v) => v == null ? 'Seleccione una categoría' : null,
+                      validator: (v) =>
+                          v == null ? 'Seleccione una categoría' : null,
                     ),
                     const SizedBox(height: 20),
-                    const Text('DIAGNÓSTICO INICIAL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(
+                      'DIAGNÓSTICO INICIAL',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _descCtrl,
                       maxLines: 4,
                       decoration: const InputDecoration(
-                        hintText: 'Describa el problema lo más detallado posible...',
+                        hintText:
+                            'Describa el problema lo más detallado posible...',
                       ),
-                      validator: (v) => (v == null || v.trim().length < 10) ? 'Detalle más el problema' : null,
+                      validator: (v) => (v == null || v.trim().length < 10)
+                          ? 'Detalle más el problema'
+                          : null,
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
@@ -152,7 +184,10 @@ class _ClienteScreenState extends State<ClienteScreen> {
                         ),
                         onPressed: _enviarSolicitud,
                         icon: const Icon(Icons.location_searching_rounded),
-                        label: const Text('CONTINUAR A UBICACIÓN', style: TextStyle(fontWeight: FontWeight.w900)),
+                        label: const Text(
+                          'CONTINUAR A UBICACIÓN',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
                       ),
                     ),
                   ],
@@ -169,13 +204,25 @@ class _ClienteScreenState extends State<ClienteScreen> {
             StreamBuilder<QuerySnapshot>(
               stream: _historialStream,
               builder: (context, snapshot) {
-                if (snapshot.hasError) return const SizedBox();
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error al cargar datos: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
                 if (snapshot.data!.docs.isEmpty) {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Text('No hay solicitudes registradas.', style: TextStyle(color: Colors.grey)),
+                      child: Text(
+                        'No hay solicitudes registradas.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   );
                 }
@@ -188,7 +235,10 @@ class _ClienteScreenState extends State<ClienteScreen> {
                     final job = snapshot.data!.docs[index];
                     final data = job.data() as Map<String, dynamic>;
                     final String estado = data['estado'] ?? 'solicitado';
-                    final bool isFinished = estado == 'evaluado_cliente' || estado == 'cerrado';
+                    final bool isFinished =
+                        estado == 'evaluado_cliente' ||
+                        estado == 'cerrado' ||
+                        estado == 'completado';
 
                     return PremiumCard(
                       accentColor: getColorEstado(estado),
@@ -200,89 +250,259 @@ class _ClienteScreenState extends State<ClienteScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: getColorEstado(estado).withValues(alpha: 0.1),
+                                  color: getColorEstado(
+                                    estado,
+                                  ).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  estado.toUpperCase().replaceFirst('_', ' '),
-                                  style: TextStyle(color: getColorEstado(estado), fontSize: 9, fontWeight: FontWeight.w900),
+                                  estado.toUpperCase().replaceAll('_', ' '),
+                                  style: TextStyle(
+                                    color: getColorEstado(estado),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
-                              Text('#${job.id.substring(job.id.length - 6).toUpperCase()}', style: TextStyle(color: Colors.grey.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.bold)),
+                              Text(
+                                '#${job.id.substring(job.id.length - 6).toUpperCase()}',
+                                style: TextStyle(
+                                  color: Colors.grey.withValues(alpha: 0.4),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Text(data['categoria'] ?? 'General', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: cTextoOscuro)),
-                          if (data['direccionText'] != null && data['direccionText'].toString().isNotEmpty) ...[
+                          Text(
+                            data['categoria'] ?? 'General',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: cTextoOscuro,
+                            ),
+                          ),
+                          if (data['direccionText'] != null &&
+                              data['direccionText'].toString().isNotEmpty) ...[
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.location_on_rounded, size: 14, color: cFucsia),
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  size: 14,
+                                  color: cFucsia,
+                                ),
                                 const SizedBox(width: 4),
-                                Expanded(child: Text(data['direccionText'], style: const TextStyle(fontSize: 13, color: cTextoOscuro, fontWeight: FontWeight.w600))),
+                                Expanded(
+                                  child: Text(
+                                    data['direccionText'],
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: cTextoOscuro,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
                           const SizedBox(height: 6),
-                          Text(data['descripcion'] ?? '', style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text(
+                            data['descripcion'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const Divider(height: 32),
                           Row(
                             children: [
                               CircleAvatar(
                                 radius: 14,
-                                backgroundColor: (data['operarioNombre'] != null ? cAzul : Colors.grey).withValues(alpha: 0.1),
-                                child: Icon(Icons.engineering_rounded, size: 14, color: data['operarioNombre'] != null ? cAzul : Colors.grey),
+                                backgroundColor:
+                                    (data['operarioNombre'] != null
+                                            ? cAzul
+                                            : Colors.grey)
+                                        .withValues(alpha: 0.1),
+                                child: Icon(
+                                  Icons.engineering_rounded,
+                                  size: 14,
+                                  color: data['operarioNombre'] != null
+                                      ? cAzul
+                                      : Colors.grey,
+                                ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('ESPECIALISTA', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.grey)),
-                                    Text(data['operarioNombre'] ?? 'Asignando...', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: data['operarioNombre'] != null ? cTextoOscuro : Colors.grey)),
+                                    const Text(
+                                      'ESPECIALISTA',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    Text(
+                                      data['operarioNombre'] ?? 'Asignando...',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: data['operarioNombre'] != null
+                                            ? cTextoOscuro
+                                            : Colors.grey,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                          
+
                           if (estado == 'revision_cliente') ...[
                             const SizedBox(height: 20),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(backgroundColor: cAzul),
-                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VistoBuenoScreen(data: data, jobId: job.id))),
-                                child: const Text('REVISAR Y APROBAR', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: cAzul,
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VistoBuenoScreen(
+                                      data: data,
+                                      jobId: job.id,
+                                    ),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'REVISAR Y APROBAR',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
-                          
-                          if (data['pinCode'] != null && !isFinished && estado != 'revision_cliente') ...[
-                             const SizedBox(height: 20),
-                             Container(
-                               padding: const EdgeInsets.all(12),
-                               decoration: BoxDecoration(
-                                 color: const Color(0xFFFEFCE8),
-                                 borderRadius: BorderRadius.circular(12),
-                                 border: Border.all(color: const Color(0xFFFEF08A)),
-                               ),
-                               child: Row(
-                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                 children: [
-                                   Column(
-                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                     children: [
-                                       const Text('CÓDIGO PIN', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF854D0E))),
-                                       Text(data['pinCode'], style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: cTextoOscuro, letterSpacing: 4)),
-                                     ],
-                                   ),
-                                   const Icon(Icons.security_rounded, color: Color(0xFFCA8A04)),
-                                 ],
-                               ),
-                             ),
+
+                          if (isFinished && data['reporteTecnico'] != null) ...[
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: cAzul,
+                                  side: const BorderSide(color: cAzul),
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VistoBuenoScreen(
+                                      data: data,
+                                      jobId: job.id,
+                                      isReadOnly: true,
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.description_outlined),
+                                label: const Text(
+                                  'VER REPORTE TÉCNICO',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          if ((estado == 'completado' || estado == 'cerrado') &&
+                              data['evaluacionCliente'] == null) ...[
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: cAmarillo,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CalificacionScreen(
+                                      data: data,
+                                      jobId: job.id,
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.star_rate_rounded),
+                                label: const Text(
+                                  'CALIFICAR SERVICIO',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          if (data['pinCode'] != null &&
+                              (estado == 'solicitado' ||
+                                  estado == 'asignado' ||
+                                  estado == 'en_camino')) ...[
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEFCE8),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFFEF08A),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'CÓDIGO PIN',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF854D0E),
+                                        ),
+                                      ),
+                                      Text(
+                                        data['pinCode'],
+                                        style: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          color: cTextoOscuro,
+                                          letterSpacing: 4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const Icon(
+                                    Icons.security_rounded,
+                                    color: Color(0xFFCA8A04),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -297,4 +517,3 @@ class _ClienteScreenState extends State<ClienteScreen> {
     );
   }
 }
-

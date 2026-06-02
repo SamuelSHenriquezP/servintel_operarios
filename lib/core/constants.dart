@@ -38,6 +38,8 @@ Color getColorEstado(String estado) {
       return Colors.teal;
     case 'revision_cliente':
       return Colors.deepPurple;
+    case 'esperando_cierre':
+      return Colors.teal;
     case 'completado': // Esto es cierre admin
       return Colors.green;
     case 'evaluado_cliente':

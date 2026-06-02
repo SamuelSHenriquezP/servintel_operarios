@@ -6,8 +6,9 @@ import '../../shared/widgets/premium_widgets.dart';
 class VistoBuenoScreen extends StatefulWidget {
   final Map<String, dynamic> data;
   final String jobId;
+  final bool isReadOnly;
 
-  const VistoBuenoScreen({super.key, required this.data, required this.jobId});
+  const VistoBuenoScreen({super.key, required this.data, required this.jobId, this.isReadOnly = false});
 
   @override
   State<VistoBuenoScreen> createState() => _VistoBuenoScreenState();
@@ -15,7 +16,7 @@ class VistoBuenoScreen extends StatefulWidget {
 
 class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
   bool _isApproving = false;
-  int _rating = 5;
+
   final _commentCtrl = TextEditingController();
 
   @override
@@ -28,16 +29,29 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
     setState(() => _isApproving = true);
     try {
       await FirebaseFirestore.instance.collection('trabajos').doc(widget.jobId).update({
-        'estado': 'evaluado_cliente',
+        'estado': 'trabajo_aprobado',
         'reporteAprobado': true,
-        'evaluacionCliente': {
-          'estrellas': _rating,
-          'comentario': _commentCtrl.text.trim(),
-          'fechaEvaluacion': FieldValue.serverTimestamp(),
-        },
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Gracias por su aprobación y evaluación!'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Diagnóstico aprobado! El técnico procederá con el trabajo.'), backgroundColor: Colors.green));
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
+    }
+  }
+
+  Future<void> _rechazarReporte() async {
+    setState(() => _isApproving = true);
+    try {
+      await FirebaseFirestore.instance.collection('trabajos').doc(widget.jobId).update({
+        'estado': 'en_sitio', // Vuelve al operario para rehacer reporte
+        'reporteRechazado': true,
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reporte rechazado. El técnico debe generarlo nuevamente.'), backgroundColor: Colors.orange));
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -184,57 +198,75 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
               _buildSection(
                 'LIQUIDACIÓN DE SERVICIOS',
                 [
-                  if (reporte['costoServicio']?.toString().isNotEmpty == true)
-                    _buildRow('Servicio Empresa', '\$${reporte['costoServicio']}', isBold: true),
-                  if (reporte['costoTecnico']?.toString().isNotEmpty == true)
+                  if (reporte['costoEmpresa'] != null && reporte['costoEmpresa'].toString().isNotEmpty)
+                    _buildRow('Servicio Empresa', '\$${reporte['costoEmpresa']}', isBold: true),
+                  if (reporte['costoTecnico'] != null && reporte['costoTecnico'].toString().isNotEmpty)
                     _buildRow('Servicio Técnico', '\$${reporte['costoTecnico']}', isBold: true),
                 ],
               ),
-            const SectionHeader(title: 'Calificación del Servicio'),
-            PremiumCard(
-              accentColor: cAmarillo,
-              child: Column(
+            if (!widget.isReadOnly) ...[
+              Row(
                 children: [
-                  const Text('¿Qué tal le pareció el servicio?', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) => IconButton(
-                      icon: Icon(
-                        index < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                        color: cAmarillo,
-                        size: 40,
+                  Expanded(
+                    child: SizedBox(
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        icon: _isApproving ? const SizedBox() : const Icon(Icons.cancel_outlined, color: Colors.white),
+                        label: _isApproving
+                            ? const SizedBox()
+                            : const Text('RECHAZAR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        onPressed: _isApproving ? null : _rechazarReporte,
                       ),
-                      onPressed: () => setState(() => _rating = index + 1),
-                    )),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _commentCtrl,
-                    maxLines: 3,
-                    decoration: const InputDecoration(hintText: 'Déjanos un comentario adicional...'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: SizedBox(
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        icon: _isApproving ? const SizedBox() : const Icon(Icons.check_circle_outline, color: Colors.white),
+                        label: _isApproving
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('APROBAR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        onPressed: _isApproving ? null : _aprobarReporte,
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ] else if (widget.data['evaluacionCliente'] != null) ...[
+              const SectionHeader(title: 'Su Calificación'),
+              PremiumCard(
+                accentColor: cAmarillo,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: List.generate(5, (index) => Icon(
+                        index < (widget.data['evaluacionCliente']['estrellas'] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
+                        color: cAmarillo,
+                        size: 32,
+                      )),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(widget.data['evaluacionCliente']['comentario'] ?? 'Sin comentario', style: const TextStyle(fontSize: 14, color: cTextoOscuro)),
+                  ],
                 ),
-                icon: _isApproving ? const SizedBox() : const Icon(Icons.check_circle_outline, color: Colors.white),
-                label: _isApproving
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('ACEPTAR Y FINALIZAR', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                onPressed: _isApproving ? null : _aprobarReporte,
               ),
-            ),
+            ],
             const SizedBox(height: 40),
           ],
         ),

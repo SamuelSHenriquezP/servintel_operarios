@@ -1,8 +1,69 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      // Verificar custom claim (más eficiente) O el campo rol en el documento del usuario
+      return request.auth != null && (
+        request.auth.token.rol == 'admin' || 
+        request.auth.token.Rol == 'admin' ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin' ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.Rol == 'admin'
+      );
+    }
+
+    match /usuarios/{userId} {
+      allow create: if request.auth != null && (
+        // ✅ Seguridad: Clientes nuevos siempre NACEN desactivados (activo: false)
+        (request.auth.uid == userId && request.resource.data.rol == 'cliente' && request.resource.data.activo == false) || 
+        isAdmin()
+      ); 
+      allow read: if request.auth != null;
+      // ✅ Seguridad: Solo admin puede activar cuentas o cambiar roles
+      allow update: if request.auth != null && (
+        isAdmin() || 
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol', 'Rol', 'activo', 'email']))
+      );
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    match /trabajos/{jobId} {
+      allow create: if request.auth != null && (
+                      // Cliente crea su propio pedido
+                      (request.resource.data.clienteId == request.auth.uid && request.resource.data.estado == 'solicitado') ||
+                      // Admin crea pedido en nombre de un cliente
+                      isAdmin()
+                    );
+                    
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        resource.data.clienteId == request.auth.uid || 
+        resource.data.operarioId == request.auth.uid
+      );
+      
+      allow update: if request.auth != null && (
+        isAdmin() ||
+        // Operarios pueden actualizar su propio trabajo con campos permitidos y estados válidos
+        (resource.data.operarioId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['estado', 'tiempoEnCamino', 'tiempoEnSitio', 'tiempoInicioTrabajo', 'tiempoFinTrabajo', 'tiempoCompletado', 'reporteTecnico']
+          ) &&
+          request.resource.data.estado in ['en_camino', 'en_sitio', 'retrasado', 'revision_cliente', 'en_progreso', 'esperando_cierre']
+        ) ||
+        // Clientes pueden aprobar/rechazar su reporte y calificar
+        (resource.data.clienteId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['estado', 'reporteAprobado', 'reporteRechazado', 'evaluacionCliente']
+          ) &&
+          request.resource.data.estado in ['trabajo_aprobado', 'en_sitio', 'evaluado_cliente']
+        )
+      );
+      
+      allow delete: if request.auth != null && isAdmin();
     }
   }
 }
