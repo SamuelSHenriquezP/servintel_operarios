@@ -16,6 +16,7 @@ class VistoBuenoScreen extends StatefulWidget {
 
 class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
   bool _isApproving = false;
+  bool _isRejecting = false;
 
   final _commentCtrl = TextEditingController();
 
