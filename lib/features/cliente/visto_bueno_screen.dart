@@ -44,7 +44,7 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
   }
 
   Future<void> _rechazarReporte() async {
-    setState(() => _isApproving = true);
+    setState(() => _isRejecting = true);
     try {
       await FirebaseFirestore.instance.collection('trabajos').doc(widget.jobId).update({
         'estado': 'en_sitio', // Vuelve al operario para rehacer reporte
@@ -57,7 +57,7 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     } finally {
-      if (mounted) setState(() => _isApproving = false);
+      if (mounted) setState(() => _isRejecting = false);
     }
   }
 
@@ -194,13 +194,13 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
                   }).toList(),
                 ),
             ],
-            if (reporte['costoServicio']?.toString().isNotEmpty == true || reporte['costoTecnico']?.toString().isNotEmpty == true)
+            if (reporte['costoEmpresa'] != null || reporte['costoTecnico'] != null)
               _buildSection(
                 'LIQUIDACIÓN DE SERVICIOS',
                 [
-                  if (reporte['costoEmpresa'] != null && reporte['costoEmpresa'].toString().isNotEmpty)
+                  if (reporte['costoEmpresa'] != null)
                     _buildRow('Servicio Empresa', '\$${reporte['costoEmpresa']}', isBold: true),
-                  if (reporte['costoTecnico'] != null && reporte['costoTecnico'].toString().isNotEmpty)
+                  if (reporte['costoTecnico'] != null)
                     _buildRow('Servicio Técnico', '\$${reporte['costoTecnico']}', isBold: true),
                 ],
               ),
@@ -217,11 +217,11 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
                           elevation: 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        icon: _isApproving ? const SizedBox() : const Icon(Icons.cancel_outlined, color: Colors.white),
-                        label: _isApproving
-                            ? const SizedBox()
+                        icon: _isRejecting ? const SizedBox() : const Icon(Icons.cancel_outlined, color: Colors.white),
+                        label: _isRejecting
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                             : const Text('RECHAZAR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                        onPressed: _isApproving ? null : _rechazarReporte,
+                        onPressed: (_isApproving || _isRejecting) ? null : _rechazarReporte,
                       ),
                     ),
                   ),
@@ -241,7 +241,7 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
                         label: _isApproving
                             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                             : const Text('APROBAR', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                        onPressed: _isApproving ? null : _aprobarReporte,
+                        onPressed: (_isApproving || _isRejecting) ? null : _aprobarReporte,
                       ),
                     ),
                   ),

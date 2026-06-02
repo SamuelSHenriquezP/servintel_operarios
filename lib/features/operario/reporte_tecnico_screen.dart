@@ -164,10 +164,7 @@ class _ReporteTecnicoScreenState extends State<ReporteTecnicoScreen> {
       final reporte = {
         'encargadoNombre': widget.userData['nombre'],
         'encargadoCedula': _cedulaEncargadoCtrl.text.trim(),
-        'tipoServicio': _tipoServicio,
-        'equipos': _equipos.map((e) => {'equipoMarca': e['equipoMarca']!.text.trim(), 'modelo': e['modelo']!.text.trim(), 'contador': e['contador']!.text.trim()}).toList(),
-        'detallesTecnicos': _detalles.map((d) => {'diagnostico': d['diagnostico']!.text.trim(), 'solucion': d['solucion']!.text.trim()}).toList(),
-        'insumos': _insumos.map((i) => {'descripcion': i['descripcion']!.text.trim(), 'cantidad': i['cantidad']!.text.trim()}).toList(),
+        'trabajosReportados': trabajosReportados,
         'costoEmpresa': double.tryParse(_costoServicioCtrl.text.trim()) ?? 0.0,
         'costoTecnico': double.tryParse(_costoTecnicoCtrl.text.trim()) ?? 0.0,
         'fechaEmision': FieldValue.serverTimestamp(),
@@ -176,6 +173,7 @@ class _ReporteTecnicoScreenState extends State<ReporteTecnicoScreen> {
       await FirebaseFirestore.instance.collection('trabajos').doc(widget.jobId).update({
         'estado': 'revision_cliente',
         'reporteTecnico': reporte,
+        'tiempoCompletado': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;
