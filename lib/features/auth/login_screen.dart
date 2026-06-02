@@ -84,9 +84,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 160,
                 ),
                 const SizedBox(height: 16),
-                FittedBox(
+                const FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: const Text(
+                  child: Text(
                     'SERVI INTEL SAS',
                     style: TextStyle(
                       fontSize: 26,

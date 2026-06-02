@@ -85,49 +85,101 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
               [
                 _buildRow('Encargado', reporte['encargadoNombre'] ?? 'No especificado'),
                 _buildRow('Identificación', reporte['encargadoCedula'] ?? 'No especificada'),
-                _buildRow('Tipo Servicio', reporte['tipoServicio'] ?? 'General'),
               ],
             ),
-            if ((reporte['equipos'] as List?)?.isNotEmpty == true)
-              _buildSection(
-                'EQUIPOS INTERVENIDOS',
-                (reporte['equipos'] as List).map((e) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.03),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildRow('Equipo', e['equipoMarca'] ?? ''),
-                        _buildRow('Modelo', e['modelo'] ?? ''),
-                        _buildRow('Contador', e['contador'] ?? ''),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            if ((reporte['detallesTecnicos'] as List?)?.isNotEmpty == true)
-              _buildSection(
-                'DETALLES DE LA INTERVENCIÓN',
-                (reporte['detallesTecnicos'] as List).map((d) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('DIAGNÓSTICO:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                        Text(d['diagnostico'] ?? '', style: const TextStyle(color: cTextoOscuro, fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 6),
-                        const Text('SOLUCIÓN APLICADA:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                        Text(d['solucion'] ?? '', style: const TextStyle(color: cTextoOscuro, fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
+            if ((reporte['trabajosReportados'] as List?)?.isNotEmpty == true)
+              ...((reporte['trabajosReportados'] as List).asMap().entries.map((entry) {
+                final int idx = entry.key;
+                final t = entry.value as Map<String, dynamic>;
+                return _buildSection(
+                  'TRABAJO ${idx + 1}: ${t['tipo']?.toString().toUpperCase() ?? ''}',
+                  [
+                    if (t['tipo'] == 'Venta') ...[
+                      _buildRow('Valor de Venta', '\$${t['ventaValor'] ?? 0}'),
+                      _buildRow('Condiciones', t['ventaCondiciones']?.toString() ?? 'N/A'),
+                      const Divider(),
+                    ],
+                    if (t['tipo'] == 'Alquiler') ...[
+                      _buildRow('Duración', '${t['alquilerMeses'] ?? 0} Meses'),
+                      _buildRow('Valor Mensual', '\$${t['alquilerValorMensual'] ?? 0}'),
+                      const Divider(),
+                    ],
+                    if ((t['equipos'] as List?)?.isNotEmpty == true) ...[
+                      const Text('EQUIPOS:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      ...(t['equipos'] as List).map((e) => Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(8),
+                        color: Colors.grey.withValues(alpha: 0.05),
+                        child: Column(
+                          children: [
+                            _buildRow('Marca', e['equipoMarca'] ?? ''),
+                            _buildRow('Modelo', e['modelo'] ?? ''),
+                            _buildRow('Contador', e['contador'] ?? ''),
+                          ],
+                        ),
+                      )),
+                      const SizedBox(height: 8),
+                    ],
+                    if ((t['detallesTecnicos'] as List?)?.isNotEmpty == true) ...[
+                      const Text('INTERVENCIÓN:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      ...(t['detallesTecnicos'] as List).map((d) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Diag: ${d['diagnostico'] ?? ''}', style: const TextStyle(color: cTextoOscuro, fontSize: 13)),
+                            Text('Sol: ${d['solucion'] ?? ''}', style: const TextStyle(color: cTextoOscuro, fontSize: 13)),
+                          ],
+                        ),
+                      )),
+                    ],
+                  ],
+                );
+              }))
+            else ...[
+              if ((reporte['equipos'] as List?)?.isNotEmpty == true)
+                _buildSection(
+                  'EQUIPOS INTERVENIDOS',
+                  (reporte['equipos'] as List).map((e) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildRow('Equipo', e['equipoMarca'] ?? ''),
+                          _buildRow('Modelo', e['modelo'] ?? ''),
+                          _buildRow('Contador', e['contador'] ?? ''),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              if ((reporte['detallesTecnicos'] as List?)?.isNotEmpty == true)
+                _buildSection(
+                  'DETALLES DE LA INTERVENCIÓN',
+                  (reporte['detallesTecnicos'] as List).map((d) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('DIAGNÓSTICO:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          Text(d['diagnostico'] ?? '', style: const TextStyle(color: cTextoOscuro, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 6),
+                          const Text('SOLUCIÓN APLICADA:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          Text(d['solucion'] ?? '', style: const TextStyle(color: cTextoOscuro, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+            ],
             if (reporte['costoServicio']?.toString().isNotEmpty == true || reporte['costoTecnico']?.toString().isNotEmpty == true)
               _buildSection(
                 'LIQUIDACIÓN DE SERVICIOS',
