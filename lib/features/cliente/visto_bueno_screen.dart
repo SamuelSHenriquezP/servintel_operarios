@@ -110,14 +110,50 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
                   'TRABAJO ${idx + 1}: ${t['tipo']?.toString().toUpperCase() ?? ''}',
                   [
                     if (t['tipo'] == 'Venta') ...[
-                      _buildRow('Valor de Venta', '\$${t['ventaValor'] ?? 0}'),
-                      _buildRow('Condiciones', t['ventaCondiciones']?.toString() ?? 'N/A'),
+                      if (t['descripcion'] != null) _buildRow('Detalle', t['descripcion'].toString()),
+                      _buildRow('Valor de Venta', '\$${t['valor'] ?? t['ventaValor'] ?? 0}'),
+                      _buildRow('Condiciones/Garantía', (t['garantia'] ?? t['ventaCondiciones'])?.toString() ?? 'N/A'),
                       const Divider(),
                     ],
                     if (t['tipo'] == 'Alquiler') ...[
-                      _buildRow('Duración', '${t['alquilerMeses'] ?? 0} Meses'),
-                      _buildRow('Valor Mensual', '\$${t['alquilerValorMensual'] ?? 0}'),
+                      _buildRow('Condiciones', (t['condiciones'])?.toString() ?? 'N/A'),
+                      _buildRow('Duración', '${t['duracion'] ?? t['alquilerMeses'] ?? 0} Meses'),
+                      _buildRow('Valor Mensual', '\$${t['valorMensual'] ?? t['alquilerValorMensual'] ?? 0}'),
                       const Divider(),
+                    ],
+                    if (t['idPropio'] != null || t['marca'] != null || t['modelo'] != null || t['serial'] != null) ...[
+                      const Text('EQUIPO:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(8),
+                        color: Colors.grey.withValues(alpha: 0.05),
+                        child: Column(
+                          children: [
+                            if (t['idPropio'] != null) _buildRow('ID Propio', t['idPropio'].toString()),
+                            if (t['marca'] != null) _buildRow('Marca', t['marca'].toString()),
+                            if (t['modelo'] != null) _buildRow('Modelo', t['modelo'].toString()),
+                            if (t['serial'] != null) _buildRow('Serial', t['serial'].toString()),
+                            if (t['contador'] != null) _buildRow('Contador', t['contador'].toString()),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (t['diagnostico'] != null || t['solucion'] != null || t['insumos'] != null) ...[
+                      const Text('INTERVENCIÓN:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (t['diagnostico'] != null) Text('Diag: ${t['diagnostico']}', style: const TextStyle(color: cTextoOscuro, fontSize: 13)),
+                            if (t['solucion'] != null) Text('Sol: ${t['solucion']}', style: const TextStyle(color: cTextoOscuro, fontSize: 13)),
+                            if (t['insumos'] != null) Text('Insumos: ${t['insumos']}', style: const TextStyle(color: cTextoOscuro, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const Divider(), // Consistencia visual con Venta y Alquiler
                     ],
                     if ((t['equipos'] as List?)?.isNotEmpty == true) ...[
                       const Text('EQUIPOS:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),

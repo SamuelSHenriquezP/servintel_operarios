@@ -287,6 +287,40 @@ class _TarjetaOperario extends StatelessWidget {
             decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0))),
             child: Text(data['descripcion'] ?? '', style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.5)),
           ),
+          // Datos de la máquina asociada al ticket
+          if (data['maquinaModelo'] != null || data['maquinaIdPropio'] != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cAzul.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cAzul.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.print_rounded, color: cAzul, size: 14),
+                      SizedBox(width: 6),
+                      Text('MÁQUINA ASOCIADA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: cAzul, letterSpacing: 0.8)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (data['maquinaIdPropio'] != null)
+                    Text('[${data['maquinaIdPropio']}] ${data['maquinaModelo'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: cTextoOscuro)),
+                  if (data['maquinaIdPropio'] == null && data['maquinaModelo'] != null)
+                    Text(data['maquinaModelo'], style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: cTextoOscuro)),
+                  if (data['maquinaSerial'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('Serie: ${data['maquinaSerial']}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    ),
+                ],
+              ),
+            ),
+          ],
           if (data['lat'] != null) ...[
             const SizedBox(height: 16),
             GestureDetector(
@@ -396,6 +430,12 @@ class _TarjetaOperario extends StatelessWidget {
               _detalleItem(Icons.location_on_rounded, 'Dirección', data['direccionText']),
             if (data['descripcion'] != null && data['descripcion'].toString().isNotEmpty)
               _detalleItem(Icons.description_rounded, 'Descripción', data['descripcion']),
+            if (data['maquinaModelo'] != null || data['maquinaIdPropio'] != null)
+              _detalleItem(
+                Icons.print_rounded,
+                'Máquina',
+                '${data['maquinaIdPropio'] != null ? "[${data['maquinaIdPropio']}] " : ""}${data['maquinaModelo'] ?? ""}${data['maquinaSerial'] != null ? " (Serie: ${data['maquinaSerial']})" : ""}',
+              ),
             if (data['notas'] != null && data['notas'].toString().isNotEmpty)
               _detalleItem(Icons.note_rounded, 'Notas', data['notas']),
             if (data['pinCode'] != null)

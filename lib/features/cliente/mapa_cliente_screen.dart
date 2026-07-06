@@ -105,6 +105,7 @@ class _MapaClienteScreenState extends State<MapaClienteScreen> {
         'clienteId': uid,
         'clienteNombre': widget.userData['nombre'] ?? 'Cliente',
         'categoria': widget.categoria,
+        'servicio': widget.categoria, // La web guarda ambos campos
         'descripcion': widget.descripcion,
         'direccionText': _direccionCtrl.text.trim(),
         'lat': _selectedLocation!.latitude,
