@@ -575,7 +575,7 @@ class _BotonAccionOperarioState extends State<_BotonAccionOperario> {
       ]);
     }
     if (estado == 'en_sitio' || estado == 'retrasado') {
-      return _btn(Icons.fact_check_rounded, 'GENERAR DIAGNÓSTICO', cAzul, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReporteTecnicoScreen(userData: widget.userData, jobId: widget.jobId))));
+      return _btn(Icons.fact_check_rounded, 'GENERAR DIAGNÓSTICO', cAzul, () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReporteTecnicoScreen(userData: widget.userData, jobId: widget.jobId, jobData: widget.data))));
     }
     if (estado == 'revision_cliente') {
       return const Center(child: Text('⏳ ESPERANDO APROBACIÓN DEL CLIENTE', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.orange)));

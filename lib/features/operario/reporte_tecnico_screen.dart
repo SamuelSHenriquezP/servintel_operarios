@@ -54,11 +54,13 @@ class SubTrabajoState {
 class ReporteTecnicoScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
   final String jobId;
+  final Map<String, dynamic>? jobData;
 
   const ReporteTecnicoScreen({
     super.key,
     required this.userData,
     required this.jobId,
+    this.jobData,
   });
 
   @override
@@ -81,7 +83,13 @@ class _ReporteTecnicoScreenState extends State<ReporteTecnicoScreen> {
   @override
   void initState() {
     super.initState();
-    _trabajos.add(SubTrabajoState());
+    final firstTrabajo = SubTrabajoState();
+    if (widget.jobData != null) {
+      firstTrabajo.idPropioCtrl.text = widget.jobData!['maquinaIdPropio']?.toString() ?? '';
+      firstTrabajo.modeloCtrl.text = widget.jobData!['maquinaModelo']?.toString() ?? '';
+      firstTrabajo.serialCtrl.text = widget.jobData!['maquinaSerial']?.toString() ?? '';
+    }
+    _trabajos.add(firstTrabajo);
   }
 
   void _agregarSubTrabajo() {
@@ -127,32 +135,78 @@ class _ReporteTecnicoScreenState extends State<ReporteTecnicoScreen> {
           'tipo': t.tipo,
         };
 
-        if (t.marcaCtrl.text.trim().isNotEmpty) trabajoData['marca'] = t.marcaCtrl.text.trim();
-        if (t.modeloCtrl.text.trim().isNotEmpty) trabajoData['modelo'] = t.modeloCtrl.text.trim();
-        if (t.idPropioCtrl.text.trim().isNotEmpty) trabajoData['idPropio'] = t.idPropioCtrl.text.trim();
-        if (t.serialCtrl.text.trim().isNotEmpty) trabajoData['serial'] = t.serialCtrl.text.trim();
-        if (t.contadorCtrl.text.trim().isNotEmpty) trabajoData['contador'] = t.contadorCtrl.text.trim();
+        final brand = t.marcaCtrl.text.trim();
+        final model = t.modeloCtrl.text.trim();
+        final ownId = t.idPropioCtrl.text.trim();
+        final serialNum = t.serialCtrl.text.trim();
+        final counter = t.contadorCtrl.text.trim();
+
+        if (brand.isNotEmpty) trabajoData['marca'] = brand;
+        if (model.isNotEmpty) trabajoData['modelo'] = model;
+        if (ownId.isNotEmpty) trabajoData['idPropio'] = ownId;
+        if (serialNum.isNotEmpty) trabajoData['serial'] = serialNum;
+        if (counter.isNotEmpty) trabajoData['contador'] = counter;
+
+        bool hasValidData = false;
 
         if (t.tipo == 'Mantenimiento') {
-          if (t.diagnosticoCtrl.text.trim().isNotEmpty) trabajoData['diagnostico'] = t.diagnosticoCtrl.text.trim();
-          if (t.solucionCtrl.text.trim().isNotEmpty) trabajoData['solucion'] = t.solucionCtrl.text.trim();
-          if (t.insumosCtrl.text.trim().isNotEmpty) trabajoData['insumos'] = t.insumosCtrl.text.trim();
+          final diag = t.diagnosticoCtrl.text.trim();
+          final sol = t.solucionCtrl.text.trim();
+          final ins = t.insumosCtrl.text.trim();
+
+          if (diag.isNotEmpty) trabajoData['diagnostico'] = diag;
+          if (sol.isNotEmpty) trabajoData['solucion'] = sol;
+          if (ins.isNotEmpty) trabajoData['insumos'] = ins;
+
+          if (brand.isNotEmpty || model.isNotEmpty || diag.isNotEmpty || sol.isNotEmpty) {
+            hasValidData = true;
+          }
         } else if (t.tipo == 'Venta') {
-          if (t.ventaDescripcionCtrl.text.trim().isNotEmpty) trabajoData['descripcion'] = t.ventaDescripcionCtrl.text.trim();
-          // Guardado como String para ser compatible con la renderización de la web
+          final desc = t.ventaDescripcionCtrl.text.trim();
           final valorStr = t.ventaValorCtrl.text.trim();
-          if (valorStr.isNotEmpty) trabajoData['valor'] = valorStr;
-          if (t.ventaGarantiaCtrl.text.trim().isNotEmpty) trabajoData['garantia'] = t.ventaGarantiaCtrl.text.trim();
+          final gar = t.ventaGarantiaCtrl.text.trim();
+
+          if (desc.isNotEmpty) trabajoData['descripcion'] = desc;
+          if (valorStr.isNotEmpty) {
+            trabajoData['valor'] = num.tryParse(valorStr) ?? 0;
+          }
+          if (gar.isNotEmpty) trabajoData['garantia'] = gar;
+
+          if (brand.isNotEmpty || model.isNotEmpty || desc.isNotEmpty || valorStr.isNotEmpty) {
+            hasValidData = true;
+          }
         } else if (t.tipo == 'Alquiler') {
-          if (t.alquilerCondicionesCtrl.text.trim().isNotEmpty) trabajoData['condiciones'] = t.alquilerCondicionesCtrl.text.trim();
-          // Guardado como String para ser compatible con la renderización de la web
+          final cond = t.alquilerCondicionesCtrl.text.trim();
           final duracionStr = t.alquilerDuracionCtrl.text.trim();
-          if (duracionStr.isNotEmpty) trabajoData['duracion'] = duracionStr;
           final valorMensualStr = t.alquilerValorMensualCtrl.text.trim();
-          if (valorMensualStr.isNotEmpty) trabajoData['valorMensual'] = valorMensualStr;
+
+          if (cond.isNotEmpty) trabajoData['condiciones'] = cond;
+          if (duracionStr.isNotEmpty) {
+            trabajoData['duracion'] = num.tryParse(duracionStr) ?? 0;
+          }
+          if (valorMensualStr.isNotEmpty) {
+            trabajoData['valorMensual'] = num.tryParse(valorMensualStr) ?? 0;
+          }
+
+          if (brand.isNotEmpty || model.isNotEmpty || cond.isNotEmpty || valorMensualStr.isNotEmpty) {
+            hasValidData = true;
+          }
         }
 
-        trabajosReportados.add(trabajoData);
+        if (hasValidData) {
+          trabajosReportados.add(trabajoData);
+        }
+      }
+
+      if (trabajosReportados.isEmpty) {
+        setState(() => _isSending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Debe agregar al menos un trabajo válido en el reporte'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
 
       final reporte = {
