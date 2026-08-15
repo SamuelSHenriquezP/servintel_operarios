@@ -1,16 +1,32 @@
-# servintel_operarios
+# Servintel Operarios
 
-A new Flutter project.
+Aplicación móvil multiplataforma desarrollada con Flutter y Firebase para la gestión y seguimiento de servicios técnicos.
 
-## Getting Started
+Servintel forma parte de un ecosistema tecnológico compuesto por una aplicación móvil para operarios y una plataforma web administrativa conectadas al mismo sistema.
 
-This project is a starting point for a Flutter application.
+## Funcionalidades
 
-A few resources to get you started if this is your first Flutter project:
+- Autenticación de usuarios.
+- Gestión de roles.
+- Gestión de clientes.
+- Gestión de operarios.
+- Gestión y seguimiento de servicios técnicos.
+- Registro de trabajos realizados.
+- Elaboración de reportes técnicos.
+- Geolocalización y visualización de mapas.
+- Calificación de servicios.
+- Integración con Firebase y Cloud Firestore.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Estructura del proyecto
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+El código se organiza por funcionalidades y componentes compartidos:
+
+```text
+lib/
+├── core/
+├── features/
+│   ├── auth/
+│   ├── cliente/
+│   └── operario/
+└── shared/
+    └── widgets/
