@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../shared/widgets/premium_widgets.dart';
 
@@ -65,6 +66,7 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
   @override
   Widget build(BuildContext context) {
     final reporte = widget.data['reporteTecnico'] ?? {};
+    final currencyFmt = NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2);
     
     return Scaffold(
       appBar: const BrandedAppBar(),
@@ -111,14 +113,14 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
                   [
                     if (t['tipo'] == 'Venta') ...[
                       if (t['descripcion'] != null) _buildRow('Detalle', t['descripcion'].toString()),
-                      _buildRow('Valor de Venta', '\$${t['valor'] ?? t['ventaValor'] ?? 0}'),
+                      _buildRow('Valor de Venta', currencyFmt.format(num.tryParse(t['valor']?.toString() ?? t['ventaValor']?.toString() ?? '0') ?? 0)),
                       _buildRow('Condiciones/Garantía', (t['garantia'] ?? t['ventaCondiciones'])?.toString() ?? 'N/A'),
                       const Divider(),
                     ],
                     if (t['tipo'] == 'Alquiler') ...[
                       _buildRow('Condiciones', (t['condiciones'])?.toString() ?? 'N/A'),
                       _buildRow('Duración', '${t['duracion'] ?? t['alquilerMeses'] ?? 0} Meses'),
-                      _buildRow('Valor Mensual', '\$${t['valorMensual'] ?? t['alquilerValorMensual'] ?? 0}'),
+                      _buildRow('Valor Mensual', currencyFmt.format(num.tryParse(t['valorMensual']?.toString() ?? t['alquilerValorMensual']?.toString() ?? '0') ?? 0)),
                       const Divider(),
                     ],
                     if (t['idPropio'] != null || t['marca'] != null || t['modelo'] != null || t['serial'] != null) ...[
@@ -236,9 +238,9 @@ class _VistoBuenoScreenState extends State<VistoBuenoScreen> {
                 'LIQUIDACIÓN DE SERVICIOS',
                 [
                   if (reporte['costoEmpresa'] != null)
-                    _buildRow('Servicio Empresa', '\$${reporte['costoEmpresa']}', isBold: true),
+                    _buildRow('Servicio Empresa', currencyFmt.format(num.tryParse(reporte['costoEmpresa'].toString()) ?? 0), isBold: true),
                   if (reporte['costoTecnico'] != null)
-                    _buildRow('Servicio Técnico', '\$${reporte['costoTecnico']}', isBold: true),
+                    _buildRow('Servicio Técnico', currencyFmt.format(num.tryParse(reporte['costoTecnico'].toString()) ?? 0), isBold: true),
                 ],
               ),
             if (!widget.isReadOnly) ...[

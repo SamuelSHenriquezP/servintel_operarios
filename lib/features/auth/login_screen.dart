@@ -49,13 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'user-not-found':
         return 'No existe una cuenta con ese correo.';
       case 'wrong-password':
-        return 'Contraseña incorrecta.';
-      case 'too-many-requests':
-        return 'Demasiados intentos. Intente más tarde.';
+      case 'invalid-credential':
+        return 'Correo o contraseña incorrectos.';
+      case 'invalid-email':
+        return 'El formato del correo es inválido.';
       case 'user-disabled':
-        return 'Esta cuenta fue deshabilitada.';
+        return 'Esta cuenta ha sido deshabilitada.';
+      case 'too-many-requests':
+        return 'Demasiados intentos fallidos. Intente más tarde.';
+      case 'network-request-failed':
+        return 'Error de conexión a internet. Verifique su red.';
       default:
-        return 'Error al iniciar sesión. Verifique sus datos.';
+        return 'Error al iniciar sesión ($code). Verifique sus datos.';
     }
   }
 

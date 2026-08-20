@@ -19,27 +19,16 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Guardar usuario válido en caché
-        if (snapshot.hasData && snapshot.data != null) {
-          _cachedUser = snapshot.data;
-        }
-
-        // Si hay usuario en caché, siempre mostrar la app (ignorar errores transitorios)
-        if (_cachedUser != null) {
-          // Si se deslogueó explícitamente (data = null, sin error), limpiar caché
-          if (!snapshot.hasError && snapshot.connectionState == ConnectionState.active && snapshot.data == null) {
-            _cachedUser = null;
-            return const LoginScreen();
-          }
-          return RoleRouter(uid: _cachedUser!.uid);
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && _cachedUser == null) {
           return const LoadingScreen();
         }
-        if (snapshot.hasData) {
+
+        if (snapshot.hasData && snapshot.data != null) {
+          _cachedUser = snapshot.data;
           return RoleRouter(uid: snapshot.data!.uid);
         }
+
+        _cachedUser = null;
         return const LoginScreen();
       },
     );

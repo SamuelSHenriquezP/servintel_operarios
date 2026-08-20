@@ -2,28 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
-    }
-    
     function isAdmin() {
-      // Verificar custom claim (más eficiente) O el campo rol en el documento del usuario
+      // OPTIMIZACIÓN Y SEGURIDAD: Confiamos 100% en los Custom Claims del Token JWT.
+      // Se eliminó la lectura redundante a Firestore para evitar Race Conditions
+      // (donde un usuario se inyectara el rol) y para ahorrar costos (0 lecturas).
       return request.auth != null && (
-        request.auth.token.rol == 'admin' || 
-        request.auth.token.Rol == 'admin' ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin' ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.Rol == 'admin'
+        request.auth.token.get('rol', '') == 'admin' || 
+        request.auth.token.get('Rol', '') == 'admin'
       );
     }
 
     match /usuarios/{userId} {
       allow create: if request.auth != null && (
-        // ✅ Seguridad: Clientes nuevos siempre NACEN desactivados (activo: false)
-        (request.auth.uid == userId && request.resource.data.rol == 'cliente' && request.resource.data.activo == false) || 
+        // ✅ Clientes nuevos registrados desde web nacen desactivados
+        (request.auth.uid == userId && request.resource.data.get('rol', '') == 'cliente' && request.resource.data.get('activo', false) == false) || 
         isAdmin()
       ); 
-      allow read: if request.auth != null && (isAdmin() || request.auth.uid == userId);
-      // ✅ Seguridad: Solo admin puede activar cuentas o cambiar roles
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // ✅ Solo admin puede activar cuentas o cambiar roles
       allow update: if request.auth != null && (
         isAdmin() || 
         (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol', 'Rol', 'activo', 'email']))
@@ -33,33 +29,39 @@ service cloud.firestore {
 
     match /trabajos/{jobId} {
       allow create: if request.auth != null && (
-                      // Cliente crea su propio pedido
-                      (request.resource.data.clienteId == request.auth.uid && request.resource.data.estado == 'solicitado') ||
-                      // Admin crea pedido en nombre de un cliente
-                      isAdmin()
-                    );
+        // Cliente crea su propio pedido
+        (request.resource.data.get('clienteId', '') == request.auth.uid && request.resource.data.get('estado', '') == 'solicitado') ||
+        // Admin crea pedido
+        isAdmin()
+      );
                     
       allow read: if request.auth != null && (
-        isAdmin() || 
-        resource.data.clienteId == request.auth.uid || 
-        resource.data.operarioId == request.auth.uid
+        resource.data.get('clienteId', '') == request.auth.uid || 
+        resource.data.get('operarioId', '') == request.auth.uid ||
+        isAdmin()
       );
       
       allow update: if request.auth != null && (
         isAdmin() ||
-        // Operarios pueden actualizar su propio trabajo con campos permitidos y estados válidos
-        (resource.data.operarioId == request.auth.uid &&
+        // Operarios pueden actualizar su propio trabajo
+        (resource.data.get('operarioId', '') == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(
             ['estado', 'tiempoEnCamino', 'tiempoEnSitio', 'tiempoInicioTrabajo', 'tiempoFinTrabajo', 'tiempoCompletado', 'reporteTecnico']
           ) &&
-          request.resource.data.estado in ['en_camino', 'en_sitio', 'retrasado', 'revision_cliente', 'en_progreso', 'esperando_cierre']
+          request.resource.data.get('estado', '') in ['en_camino', 'en_sitio', 'retrasado', 'revision_cliente', 'en_progreso', 'esperando_cierre'] &&
+          // Validación: No puede pasar a esperando_cierre sin reporte técnico
+          (request.resource.data.get('estado', '') != 'esperando_cierre' || request.resource.data.get('reporteTecnico', null) != null) &&
+          // Validación: Solo puede cambiar estados si no está ya cerrado
+          resource.data.get('estado', '') != 'cerrado'
         ) ||
         // Clientes pueden aprobar/rechazar su reporte y calificar
-        (resource.data.clienteId == request.auth.uid &&
+        (resource.data.get('clienteId', '') == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(
             ['estado', 'reporteAprobado', 'reporteRechazado', 'evaluacionCliente']
           ) &&
-          request.resource.data.estado in ['trabajo_aprobado', 'en_sitio', 'evaluado_cliente']
+          request.resource.data.get('estado', '') in ['trabajo_aprobado', 'en_sitio', 'evaluado_cliente', 'completado', 'cerrado'] &&
+          // Validación: No puede cerrar un ticket que no esté completado o evaluado
+          (request.resource.data.get('estado', '') != 'cerrado' || resource.data.get('estado', '') in ['completado', 'evaluado_cliente', 'cerrado'])
         )
       );
       

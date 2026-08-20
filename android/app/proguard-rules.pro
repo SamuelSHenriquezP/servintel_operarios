@@ -17,6 +17,11 @@
 # Firebase Auth
 -keep class com.google.firebase.auth.** { *; }
 
+# Firebase Flutter Plugins & Pigeon Codecs
+-keep class io.flutter.plugins.firebase.** { *; }
+-keep class * extends io.flutter.plugin.common.StandardMessageCodec { *; }
+-keep class * extends io.flutter.plugin.common.MessageCodec { *; }
+
 # Firebase Common
 -keep class com.google.firebase.components.** { *; }
 -keep class com.google.firebase.provider.** { *; }
